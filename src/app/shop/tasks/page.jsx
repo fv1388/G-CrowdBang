@@ -2,8 +2,15 @@
 // G-CrowdBang · B端海外接单大厅（React + Tailwind）
 // 面向自由职业者/大学生：浏览悬赏 → 硬件GPS核验 → 发布并结算 $3.00
 // 极简、现代、移动优先；透明合规。
+"use client";
+
+import TaskButton from "@/shop/components/TaskButton";
+import { useState } from "react";
 
 export default function TaskHallPage() {
+  // 选中的任务：点击 Claim 后进入 GPS 定位校验流程
+  const [activeCampaignId, setActiveCampaignId] = useState(null);
+
   const flow = [
     {
       step: "Browse Available Bounties",
@@ -23,10 +30,11 @@ export default function TaskHallPage() {
   ];
 
   // 示例任务卡（生产环境应由 campaigns 集合动态加载）
+  // 注意：key 必须用唯一 id，不能用 title（标题可能重复）
   const sampleTasks = [
-    { title: "Unbox & Showcase — Home Gadget", city: "Jacksonville, FL", payout: 3.0, slots: 12 },
-    { title: "Budget Hack Reel — Kitchen Tool", city: "Orlando, FL", payout: 3.0, slots: 8 },
-    { title: "ASMR Setup Tour — Desk Light", city: "Tampa, FL", payout: 3.0, slots: 15 },
+    { id: "cmp_demo_001", title: "Unbox & Showcase — Home Gadget", city: "Jacksonville, FL", payout: 3.0, slots: 12 },
+    { id: "cmp_demo_002", title: "Budget Hack Reel — Kitchen Tool", city: "Orlando, FL", payout: 3.0, slots: 8 },
+    { id: "cmp_demo_003", title: "ASMR Setup Tour — Desk Light", city: "Tampa, FL", payout: 3.0, slots: 15 },
   ];
 
   return (
@@ -54,7 +62,7 @@ export default function TaskHallPage() {
         <div className="mt-5 space-y-4">
           {sampleTasks.map((t) => (
             <div
-              key={t.title}
+              key={t.id}
               className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
             >
               <div>
@@ -65,13 +73,34 @@ export default function TaskHallPage() {
               </div>
               <div className="flex items-center gap-4">
                 <span className="font-bold text-emerald-600">${t.payout.toFixed(2)}</span>
-                <button className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700">
+                <button
+                  onClick={() => setActiveCampaignId(t.id)}
+                  className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700"
+                >
                   Claim
                 </button>
               </div>
             </div>
           ))}
         </div>
+
+        {/* 接单流程：点击 Claim 后进入 GPS 定位校验 */}
+        {activeCampaignId && (
+          <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h3 className="font-semibold text-slate-800">Claim this task</h3>
+            <p className="mt-1 text-sm text-slate-500">
+              Running hardware GPS verification before submission...
+            </p>
+            {/* workerId 生产环境来自当前登录用户 */}
+            <TaskButton campaignId={activeCampaignId} workerId="usr_current" />
+            <button
+              onClick={() => setActiveCampaignId(null)}
+              className="mt-4 text-sm text-slate-500 hover:text-slate-700"
+            >
+              ← Back to board
+            </button>
+          </div>
+        )}
       </section>
 
       {/* Work flow */}
