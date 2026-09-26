@@ -5,124 +5,85 @@
 "use client";
 
 import TaskButton from "@/shop/components/TaskButton";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function TaskHallPage() {
-  // 选中的任务：点击 Claim 后进入 GPS 定位校验流程
   const [activeCampaignId, setActiveCampaignId] = useState(null);
+  const [campaigns, setCampaigns] = useState([]);
+  const [loadState, setLoadState] = useState("loading");
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/campaigns/list");
+        if (!res.ok) throw new Error(`HTTP_${res.status}`);
+        const data = await res.json();
+        if (!cancelled) {
+          setCampaigns(data.campaigns ?? []);
+          setLoadState("ok");
+        }
+      } catch (err) {
+        console.error("[task-hall] load campaigns failed", err);
+        if (!cancelled) setLoadState("error");
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const flow = [
-    {
-      step: "Browse Available Bounties",
-      body:
-        "Pick a task from the live board — each shows the target city, payout, and remaining slots.",
-    },
-    {
-      step: "Pass the Hardware GPS Check",
-      body:
-        "When you claim a task, your device runs a standard GPS check (navigator.geolocation) to confirm you're submitting from the task area.",
-    },
-    {
-      step: "Publish & Get Verified",
-      body:
-        "Post your video, submit the link, and our server verifies it's public and the claim is consistent — then your $3.00 is released to your balance.",
-    },
+    { step: "Browse Available Bounties", body: "Pick a task from the live board — each shows the target city, payout, and remaining slots." },
+    { step: "Pass the Hardware GPS Check", body: "When you claim a task, your device runs a standard GPS check (navigator.geolocation) to confirm you're submitting from the task area." },
+    { step: "Publish & Get Verified", body: "Post your video, submit the link, and our server verifies it's public and the claim is consistent — then your $3.00 is released to your balance." },
   ];
 
-  // 示例任务卡（生产环境应由 campaigns 集合动态加载）
-  // 注意：key 必须用唯一 id，不能用 title（标题可能重复）；boundary 取自任务区域配置
-  const sampleTasks = [
-    { id: "cmp_demo_001", title: "Unbox & Showcase — Home Gadget", city: "Jacksonville, FL", payout: 3.0, slots: 12,
-      boundary: { enabled: true, center: { latitude: 30.3322, longitude: -81.6557 }, radiusKm: 80, maxAcceptableAccuracyMeters: 200 } },
-    { id: "cmp_demo_002", title: "Budget Hack Reel — Kitchen Tool", city: "Orlando, FL", payout: 3.0, slots: 8,
-      boundary: { enabled: true, center: { latitude: 28.5383, longitude: -81.3792 }, radiusKm: 80, maxAcceptableAccuracyMeters: 200 } },
-    { id: "cmp_demo_003", title: "ASMR Setup Tour — Desk Light", city: "Tampa, FL", payout: 3.0, slots: 15,
-      boundary: { enabled: true, center: { latitude: 27.9506, longitude: -82.4572 }, radiusKm: 80, maxAcceptableAccuracyMeters: 200 } },
-  ];
+  const active = campaigns.find((t) => t.id === activeCampaignId);
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900">
-      {/* Welcome / Hero */}
       <section className="max-w-5xl mx-auto px-6 pt-14 pb-10 text-center">
-        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
-          Your Task Dashboard — Make Money Sharing Creator Videos
-        </h1>
-        <p className="mt-4 text-lg text-slate-600 max-w-2xl mx-auto">
-          Browse available bounty tasks in your area, complete the hardware GPS check,
-          publish your video, and get paid $3.00 once your work is verified.
-        </p>
-        <a
-          href="#tasks"
-          className="mt-6 inline-block px-6 py-3 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700"
-        >
-          Browse Tasks
-        </a>
+        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">Your Task Dashboard — Make Money Sharing Creator Videos</h1>
+        <p className="mt-4 text-lg text-slate-600 max-w-2xl mx-auto">Browse available bounty tasks in your area, complete the hardware GPS check, publish your video, and get paid $3.00 once your work is verified.</p>
+        <a href="#tasks" className="mt-6 inline-block px-6 py-3 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700">Browse Tasks</a>
       </section>
 
-      {/* Live task board */}
       <section id="tasks" className="max-w-4xl mx-auto px-6 pb-10">
         <h2 className="text-2xl font-bold">Available Bounties</h2>
+        {loadState === "loading" && <p className="mt-4 text-slate-500">Loading campaigns...</p>}
+        {loadState === "error" && <p className="mt-4 rounded-xl bg-amber-50 border border-amber-200 p-4 text-sm text-amber-700">Campaigns are temporarily unavailable. Please try again shortly.</p>}
+        {loadState === "ok" && campaigns.length === 0 && <p className="mt-4 text-slate-500">No open bounties right now — check back soon.</p>}
+
         <div className="mt-5 space-y-4">
-          {sampleTasks.map((t) => (
-            <div
-              key={t.id}
-              className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
-            >
+          {campaigns.map((t) => (
+            <div key={t.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <div>
                 <h3 className="font-semibold">{t.title}</h3>
-                <p className="text-sm text-slate-500">
-                  {t.city} · {t.slots} slots remaining
-                </p>
+                <p className="text-sm text-slate-500">{t.city}, {t.state} · {t.slotsRemaining} slots remaining</p>
               </div>
               <div className="flex items-center gap-4">
-                <span className="font-bold text-emerald-600">${t.payout.toFixed(2)}</span>
-                <button
-                  onClick={() => setActiveCampaignId(t.id)}
-                  className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700"
-                >
-                  Claim
-                </button>
+                <span className="font-bold text-emerald-600">${Number(t.payout).toFixed(2)}</span>
+                <button onClick={() => setActiveCampaignId(t.id)} className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700">Claim</button>
               </div>
             </div>
           ))}
         </div>
 
-        {/* 接单流程：点击 Claim 后进入 GPS 定位校验 */}
-        {activeCampaignId && (() => {
-          const active = sampleTasks.find((t) => t.id === activeCampaignId);
-          if (!active) return null;
-          return (
-            <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h3 className="font-semibold text-slate-800">Claim this task</h3>
-              <p className="mt-1 text-sm text-slate-500">
-                Running hardware GPS verification before submission...
-              </p>
-              {/* workerId 生产环境来自当前登录用户；boundary 来自该任务的区域配置 */}
-              <TaskButton
-                campaignId={active.id}
-                workerId="usr_current"
-                boundary={active.boundary}
-              />
-              <button
-                onClick={() => setActiveCampaignId(null)}
-                className="mt-4 text-sm text-slate-500 hover:text-slate-700"
-              >
-                ← Back to board
-              </button>
-            </div>
-          );
-        })()}
+        {active && (
+          <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <h3 className="font-semibold text-slate-800">Claim this task</h3>
+            <p className="mt-1 text-sm text-slate-500">Running hardware GPS verification before submission...</p>
+            <TaskButton campaignId={active.id} workerId="usr_current" boundary={active.boundary} />
+            <button onClick={() => setActiveCampaignId(null)} className="mt-4 text-sm text-slate-500 hover:text-slate-700">← Back to board</button>
+          </div>
+        )}
       </section>
 
-      {/* Work flow */}
       <section className="max-w-5xl mx-auto px-6 py-12">
         <h2 className="text-2xl font-bold text-center">How It Works</h2>
         <div className="mt-8 grid gap-6 md:grid-cols-3">
           {flow.map((f, i) => (
             <div key={f.step} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-600 text-white font-semibold">
-                {i + 1}
-              </span>
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-600 text-white font-semibold">{i + 1}</span>
               <h3 className="mt-3 font-semibold">{f.step}</h3>
               <p className="mt-2 text-sm leading-relaxed text-slate-600">{f.body}</p>
             </div>
@@ -130,7 +91,6 @@ export default function TaskHallPage() {
         </div>
       </section>
 
-      {/* Earnings / Trust */}
       <section className="max-w-4xl mx-auto px-6 pb-14">
         <div className="rounded-2xl border border-slate-200 bg-white p-6">
           <h3 className="font-semibold">Earnings &amp; Withdrawal</h3>
