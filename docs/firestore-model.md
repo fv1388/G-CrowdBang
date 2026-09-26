@@ -17,7 +17,10 @@
   "geotargeting_config": {
     "enabled": true,
     "target_city": "Jacksonville",
-    "target_state": "FL"
+    "target_state": "FL",
+    "target_lat": 30.3322,
+    "target_lng": -81.6557,
+    "radius_km": 80
   },
   "escrow_summary": {
     "total_slots": 50,
@@ -33,7 +36,7 @@
 
 字段说明：
 - `owner_merchant_id`：租户隔离键，规则层据此收窄读写。
-- `geotargeting_config`：投放区域约束；`enabled=false` 时不限区域。
+- `geotargeting_config`：投放区域约束；`enabled=false` 时不限区域。`target_lat/target_lng/radius_km` 为服务端边界校验中心与半径（`verify-and-publish` 接口使用）；`target_city/target_state` 供前端展示。
 - `escrow_summary`：托管账目。结算：用户所得 = `payout_rate`，平台抽成 = `platform_fee`。
 
 ---
