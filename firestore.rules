@@ -25,9 +25,8 @@ service cloud.firestore {
         && isOwner(resource.data.owner_merchant_id)
         && request.resource.data.owner_merchant_id == resource.data.owner_merchant_id;
 
-      // 删除：仅所属商户本人
-      allow delete: if isMerchant()
-        && isOwner(resource.data.owner_merchant_id);
+      // 删除：严禁删除，防止资金对账产生逻辑死结
+      allow delete: if false;
     }
 
     // ---------- 集合二：submissions（接单与设备对账总表）----------
