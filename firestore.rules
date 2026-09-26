@@ -1,0 +1,55 @@
+// F-CrowdBang · Firestore Security Rules
+// 多租户隔离账本：商户仅能读写自己的 campaigns；接单状态与资金终态仅服务端(admin)可改。
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() { return request.auth != null; }
+    function isMerchant() { return isSignedIn() && request.auth.token.role == 'merchant'; }
+    function isWorker()  { return isSignedIn() && request.auth.token.role == 'worker'; }
+    function isAdmin()   { return isSignedIn() && request.auth.token.role == 'admin'; }
+    function isOwner(uid) { return request.auth.uid == uid; }
+
+    // ---------- 集合一：campaigns（商户悬赏任务总表）----------
+    match /campaigns/{campaignId} {
+      // 公开只读：任务大厅需要浏览可接任务
+      allow read: if isSignedIn();
+
+      // 创建：仅商户，且 owner 必须是本人（租户归属硬约束）
+      allow create: if isMerchant()
+        && request.resource.data.owner_merchant_id == request.auth.uid;
+
+      // 更新：仅该任务所属商户本人；禁止篡改归属
+      allow update: if isMerchant()
+        && isOwner(resource.data.owner_merchant_id)
+        && request.resource.data.owner_merchant_id == resource.data.owner_merchant_id;
+
+      // 删除：仅所属商户本人
+      allow delete: if isMerchant()
+        && isOwner(resource.data.owner_merchant_id);
+    }
+
+    // ---------- 集合二：submissions（接单与设备对账总表）----------
+    match /submissions/{submissionId} {
+      // 创建：仅接单用户，worker 必须是本人；初始态必须为 pending + held
+      allow create: if isWorker()
+        && request.resource.data.worker_id == request.auth.uid
+        && request.resource.data.audit_metadata.verification_status == 'pending'
+        && request.resource.data.payout_status == 'held';
+
+      // 读取：本人接单 或 任务所属商户 或 管理员
+      allow read: if (isWorker() && isOwner(resource.data.worker_id))
+        || isAdmin()
+        || (isMerchant()
+            && get(/databases/$(database)/documents/campaigns/$(resource.data.campaign_id)).data.owner_merchant_id == request.auth.uid);
+
+      // 更新：pending 阶段本人可改可编辑字段；核验/资金终态仅服务端(admin)
+      allow update: if (isWorker() && isOwner(resource.data.worker_id)
+                        && resource.data.audit_metadata.verification_status == 'pending')
+        || isAdmin();
+
+      // 删除：仅管理员
+      allow delete: if isAdmin();
+    }
+  }
+}
