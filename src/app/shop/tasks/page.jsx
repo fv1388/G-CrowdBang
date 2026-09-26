@@ -30,11 +30,14 @@ export default function TaskHallPage() {
   ];
 
   // 示例任务卡（生产环境应由 campaigns 集合动态加载）
-  // 注意：key 必须用唯一 id，不能用 title（标题可能重复）
+  // 注意：key 必须用唯一 id，不能用 title（标题可能重复）；boundary 取自任务区域配置
   const sampleTasks = [
-    { id: "cmp_demo_001", title: "Unbox & Showcase — Home Gadget", city: "Jacksonville, FL", payout: 3.0, slots: 12 },
-    { id: "cmp_demo_002", title: "Budget Hack Reel — Kitchen Tool", city: "Orlando, FL", payout: 3.0, slots: 8 },
-    { id: "cmp_demo_003", title: "ASMR Setup Tour — Desk Light", city: "Tampa, FL", payout: 3.0, slots: 15 },
+    { id: "cmp_demo_001", title: "Unbox & Showcase — Home Gadget", city: "Jacksonville, FL", payout: 3.0, slots: 12,
+      boundary: { enabled: true, center: { latitude: 30.3322, longitude: -81.6557 }, radiusKm: 80, maxAcceptableAccuracyMeters: 200 } },
+    { id: "cmp_demo_002", title: "Budget Hack Reel — Kitchen Tool", city: "Orlando, FL", payout: 3.0, slots: 8,
+      boundary: { enabled: true, center: { latitude: 28.5383, longitude: -81.3792 }, radiusKm: 80, maxAcceptableAccuracyMeters: 200 } },
+    { id: "cmp_demo_003", title: "ASMR Setup Tour — Desk Light", city: "Tampa, FL", payout: 3.0, slots: 15,
+      boundary: { enabled: true, center: { latitude: 27.9506, longitude: -82.4572 }, radiusKm: 80, maxAcceptableAccuracyMeters: 200 } },
   ];
 
   return (
@@ -85,22 +88,30 @@ export default function TaskHallPage() {
         </div>
 
         {/* 接单流程：点击 Claim 后进入 GPS 定位校验 */}
-        {activeCampaignId && (
-          <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h3 className="font-semibold text-slate-800">Claim this task</h3>
-            <p className="mt-1 text-sm text-slate-500">
-              Running hardware GPS verification before submission...
-            </p>
-            {/* workerId 生产环境来自当前登录用户 */}
-            <TaskButton campaignId={activeCampaignId} workerId="usr_current" />
-            <button
-              onClick={() => setActiveCampaignId(null)}
-              className="mt-4 text-sm text-slate-500 hover:text-slate-700"
-            >
-              ← Back to board
-            </button>
-          </div>
-        )}
+        {activeCampaignId && (() => {
+          const active = sampleTasks.find((t) => t.id === activeCampaignId);
+          if (!active) return null;
+          return (
+            <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h3 className="font-semibold text-slate-800">Claim this task</h3>
+              <p className="mt-1 text-sm text-slate-500">
+                Running hardware GPS verification before submission...
+              </p>
+              {/* workerId 生产环境来自当前登录用户；boundary 来自该任务的区域配置 */}
+              <TaskButton
+                campaignId={active.id}
+                workerId="usr_current"
+                boundary={active.boundary}
+              />
+              <button
+                onClick={() => setActiveCampaignId(null)}
+                className="mt-4 text-sm text-slate-500 hover:text-slate-700"
+              >
+                ← Back to board
+              </button>
+            </div>
+          );
+        })()}
       </section>
 
       {/* Work flow */}

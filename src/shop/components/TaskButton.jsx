@@ -5,14 +5,11 @@
 
 import { useState, useCallback } from "react";
 
-// 任务地理边界配置（应与 campaign.geotargeting_config 一致，示例值）
-const GEO_BOUNDARY = {
+// 默认地理边界（当父级未传入 campaign 边界时使用，示例值 Jacksonville, FL）
+const DEFAULT_GEO_BOUNDARY = {
   enabled: true,
-  // 目标区域中心（Jacksonville, FL）
   center: { latitude: 30.3322, longitude: -81.6557 },
-  // 允许半径（公里）
   radiusKm: 80,
-  // 定位精度要求（米）
   maxAcceptableAccuracyMeters: 200,
 };
 
@@ -30,18 +27,20 @@ function haversineKm(lat1, lon1, lat2, lon2) {
 }
 
 // ---- 纯工具：是否落在任务地理边界内 ----
-function isWithinBoundary(latitude, longitude) {
-  if (!GEO_BOUNDARY.enabled) return true;
+function isWithinBoundary(latitude, longitude, boundary) {
+  if (!boundary.enabled) return true;
   const dist = haversineKm(
     latitude,
     longitude,
-    GEO_BOUNDARY.center.latitude,
-    GEO_BOUNDARY.center.longitude
+    boundary.center.latitude,
+    boundary.center.longitude
   );
-  return dist <= GEO_BOUNDARY.radiusKm;
+  return dist <= boundary.radiusKm;
 }
 
-export default function TaskButton({ campaignId, workerId }) {
+export default function TaskButton({ campaignId, workerId, boundary }) {
+  // 边界优先取父级传入的 campaign 配置，缺省回退默认
+  const GEO_BOUNDARY = boundary ?? DEFAULT_GEO_BOUNDARY;
   const [phase, setPhase] = useState("idle"); // idle | locating | submitting | success | error
   const [message, setMessage] = useState("");
 
@@ -90,7 +89,7 @@ export default function TaskButton({ campaignId, workerId }) {
     const { latitude, longitude, accuracy } = position.coords;
 
     // ② 边界校验：经纬度越界 / 精度不合格 → 熔断拦截
-    if (!isWithinBoundary(latitude, longitude)) {
+    if (!isWithinBoundary(latitude, longitude, GEO_BOUNDARY)) {
       setPhaseOnly(["locating"], "error");
       setMessage("❌ Coordinates outside task boundary. Task blocked.");
       return;
@@ -137,7 +136,12 @@ export default function TaskButton({ campaignId, workerId }) {
     <div className="w-full max-w-md mx-auto p-6 bg-[#0d1117] rounded-2xl border border-[#30363d] shadow-xl">
       <button
         onClick={handlePublish}
-        disabled={phase === "locating" || phase === "submitting"}
+        // 定位/提交中，以及已提交成功（终态）均禁用，防止重复提交
+        disabled={
+          phase === "locating" ||
+          phase === "submitting" ||
+          phase === "success"
+        }
         className={[
           "w-full py-3.5 px-6 rounded-xl font-semibold text-white",
           "bg-gradient-to-r from-purple-600 via-fuchsia-600 to-purple-600",
