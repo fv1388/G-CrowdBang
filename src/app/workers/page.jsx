@@ -4,6 +4,7 @@
 // 数据来自 GET /api/workers/my-submissions（服务端按 worker 归属过滤）。
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 export default function WorkerDashboard() {
@@ -46,13 +47,18 @@ export default function WorkerDashboard() {
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900">
+      {/* 共享导航：任务大厅 ↔ 我的任务&收益 */}
+      <nav className="border-b border-slate-200 bg-white">
+        <div className="max-w-3xl mx-auto px-6 flex items-center gap-6 py-3">
+          <Link href="/shop/tasks" className="text-sm font-medium text-slate-500 hover:text-slate-800">Task Hall</Link>
+          <Link href="/workers" className="text-sm font-medium text-indigo-600 border-b-2 border-indigo-600 pb-1">My Tasks &amp; Earnings</Link>
+        </div>
+      </nav>
+
       <div className="max-w-3xl mx-auto px-6 py-12">
         <h1 className="text-3xl font-bold">My Tasks &amp; Earnings</h1>
-        <p className="mt-2 text-slate-600">
-          Track the tasks you've claimed, their verification status, and your settled earnings.
-        </p>
+        <p className="mt-2 text-slate-600">Track the tasks you've claimed, their verification status, and your settled earnings.</p>
 
-        {/* 收益卡片 */}
         <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <p className="text-sm text-slate-500">Total settled earnings</p>
           <p className="mt-1 text-3xl font-bold text-emerald-600">${earnings.toFixed(2)}</p>
@@ -61,33 +67,22 @@ export default function WorkerDashboard() {
 
         {loadState === "loading" && <p className="mt-6 text-slate-500">Loading your tasks...</p>}
         {loadState === "error" && (
-          <p className="mt-6 rounded-xl bg-amber-50 border border-amber-200 p-4 text-sm text-amber-700">
-            Your tasks are temporarily unavailable. Please try again shortly.
-          </p>
+          <p className="mt-6 rounded-xl bg-amber-50 border border-amber-200 p-4 text-sm text-amber-700">Your tasks are temporarily unavailable. Please try again shortly.</p>
         )}
         {loadState === "ok" && subs.length === 0 && (
-          <p className="mt-6 text-slate-500">
-            You haven't claimed any tasks yet — head to the task hall to get started.
-          </p>
+          <p className="mt-6 text-slate-500">You haven't claimed any tasks yet — head to the task hall to get started.</p>
         )}
 
         <div className="mt-6 space-y-3">
           {subs.map((s) => (
-            <div
-              key={s.submissionId}
-              className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
-            >
+            <div key={s.submissionId} className="flex items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
               <div>
                 <p className="font-medium">{s.campaignId}</p>
-                <p className="text-xs text-slate-400">
-                  Claimed {s.claimedAt ? new Date(s.claimedAt).toLocaleString() : "—"}
-                </p>
+                <p className="text-xs text-slate-400">Claimed {s.claimedAt ? new Date(s.claimedAt).toLocaleString() : "—"}</p>
               </div>
               <div className="flex items-center gap-3">
                 {statusBadge(s.status)}
-                <span className="font-semibold text-emerald-600">
-                  {s.status === "verified" ? "$3.00" : "$0.00"}
-                </span>
+                <span className="font-semibold text-emerald-600">{s.status === "verified" ? "$3.00" : "$0.00"}</span>
               </div>
             </div>
           ))}

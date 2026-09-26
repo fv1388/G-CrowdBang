@@ -5,6 +5,7 @@
 "use client";
 
 import TaskButton from "@/shop/components/TaskButton";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 export default function TaskHallPage() {
@@ -41,6 +42,18 @@ export default function TaskHallPage() {
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900">
+      {/* 共享导航：任务大厅 ↔ 我的任务&收益 */}
+      <nav className="border-b border-slate-200 bg-white">
+        <div className="max-w-5xl mx-auto px-6 flex items-center gap-6 py-3">
+          <Link href="/shop/tasks" className="text-sm font-medium text-indigo-600 border-b-2 border-indigo-600 pb-1">
+            Task Hall
+          </Link>
+          <Link href="/workers" className="text-sm font-medium text-slate-500 hover:text-slate-800">
+            My Tasks &amp; Earnings
+          </Link>
+        </div>
+      </nav>
+
       <section className="max-w-5xl mx-auto px-6 pt-14 pb-10 text-center">
         <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">Your Task Dashboard — Make Money Sharing Creator Videos</h1>
         <p className="mt-4 text-lg text-slate-600 max-w-2xl mx-auto">Browse available bounty tasks in your area, complete the hardware GPS check, publish your video, and get paid $3.00 once your work is verified.</p>
