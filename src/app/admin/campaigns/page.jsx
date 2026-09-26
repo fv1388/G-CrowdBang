@@ -68,7 +68,9 @@ export default function MerchantCampaigns() {
               <div key={c.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div>
-                    <h2 className="font-semibold">{c.title}</h2>
+                    <Link href={`/admin/campaigns/${encodeURIComponent(c.id)}`} className="font-semibold hover:text-indigo-600">
+                      {c.title} →
+                    </Link>
                     <p className="text-sm text-slate-500">
                       {c.city}, {c.state} · {c.status} · ${Number(c.payout).toFixed(2)}/task
                     </p>
