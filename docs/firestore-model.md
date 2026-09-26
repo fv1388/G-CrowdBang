@@ -55,7 +55,7 @@
   },
   "audit_metadata": {
     "published_video_id": "v_9876543210",
-    "verification_status": "pending"
+    "verification_status": "PENDING_AUDIT"
   },
   "claim_timestamp": "2026-09-26T14:20:00Z",
   "submitted_at": null,

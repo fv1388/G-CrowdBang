@@ -4,20 +4,28 @@
 // 合规声明：仅使用官方公开 API + 显式平台标识的标准 fetch，不含任何指纹伪造或规避检测逻辑。
 
 import { NextResponse } from "next/server";
-import { initializeApp, cert, getApps } from "firebase-admin/app";
-import { getFirestore, FieldValue } from "firebase-admin/firestore";
+import { mockSubmissions, mockUsers, mockPlatform } from "../_mock-store";
 
-// ---- Firebase Admin 单例（F-CrowdBang）----
-if (!getApps().length) {
-  initializeApp({
-    credential: cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
-    }),
-  });
+// ---- Firebase Admin 单例（F-CrowdBang）；缺依赖时降级本地 mock，保证本地联调可运行 ----
+let db = null;
+let firebaseAvailable = false;
+try {
+  const { initializeApp, cert, getApps } = await import("firebase-admin/app");
+  const { getFirestore, FieldValue } = await import("firebase-admin/firestore");
+  if (!getApps().length) {
+    initializeApp({
+      credential: cert({
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: (process.env.FIREBASE_PRIVATE_KEY || "").replace(/\\n/g, "\n"),
+      }),
+    });
+  }
+  db = getFirestore();
+  firebaseAvailable = true;
+} catch (e) {
+  console.warn("[verify-and-payout] firebase-admin unavailable, using local mock");
 }
-const db = getFirestore();
 
 // 分账常量：佣金（worker）与平台纯技术服务费（官方利润账户）
 const PLATFORM_PAYOUT = 3.0;
@@ -29,7 +37,12 @@ const PLATFORM_FEE = 1.0;
  * 返回 { ok, public, ... }；ok=false 表示视频不可见（不存在/已删除/非公开）。
  */
 async function lookupPublishedVideo(publishedVideoId) {
-  // 按实际对接的社交平台官方公开 API 填端点和凭据（服务端环境变量，勿前端暴露）。
+  // 本地 mock 模式（firebase-admin 未装）：返回确定性占位结果，仅用于本地闭环联调，非真实反查
+  if (!firebaseAvailable) {
+    return { ok: true, public: true, raw: { status: "active", visibility: "public", local_mock: true } };
+  }
+
+  // 真实环境：按实际对接的社交平台官方公开 API 填端点和凭据（服务端环境变量，勿前端暴露）。
   const token = process.env.SOCIAL_PLATFORM_API_TOKEN;
   const url =
     `https://api.platform.example/v1/videos/${encodeURIComponent(publishedVideoId)}` +
@@ -58,15 +71,25 @@ export async function POST(request) {
       return NextResponse.json({ error: "SUBMISSION_ID_REQUIRED" }, { status: 400 });
     }
 
-    const subRef = db.collection("submissions").doc(submissionId);
-    const subSnap = await subRef.get();
-    if (!subSnap.exists) {
-      return NextResponse.json({ error: "SUBMISSION_NOT_FOUND" }, { status: 404 });
-    }
-    const submission = subSnap.data();
+    let submission, subRef = null;
 
-    // 仅 pending 可结算；终态不可逆
-    if (submission.audit_metadata?.verification_status !== "pending") {
+    if (firebaseAvailable) {
+      subRef = db.collection("submissions").doc(submissionId);
+      const subSnap = await subRef.get();
+      if (!subSnap.exists) {
+        return NextResponse.json({ error: "SUBMISSION_NOT_FOUND" }, { status: 404 });
+      }
+      submission = subSnap.data();
+    } else {
+      const m = mockSubmissions.get(submissionId);
+      if (!m) {
+        return NextResponse.json({ error: "SUBMISSION_NOT_FOUND" }, { status: 404 });
+      }
+      submission = m;
+    }
+
+    // 仅 PENDING_AUDIT 可结算；终态不可逆
+    if (submission.audit_metadata?.verification_status !== "PENDING_AUDIT") {
       return NextResponse.json(
         { error: "NOT_PENDING", status: submission.audit_metadata?.verification_status },
         { status: 409 }
@@ -79,57 +102,80 @@ export async function POST(request) {
     );
 
     if (!video.ok) {
-      // 视频不存在 / 已删除 / 非公开 → 终止结算，物理置为 REJECTED，退还托管
-      await subRef.update({
+      // 视频不存在 / 已删除 / 非公开 → 终止结算，物理置为 rejected，退还托管
+      const update = {
         "audit_metadata.verification_status": "rejected",
         "audit_metadata.reject_reason": "VIDEO_NOT_PUBLIC",
         payout_status: "released",
         updated_at: new Date().toISOString(),
-      });
+      };
+      if (firebaseAvailable) {
+        await subRef.update(update);
+      } else {
+        Object.assign(mockSubmissions.get(submissionId), update);
+      }
       return NextResponse.json(
-        { result: "rejected", reason: "VIDEO_NOT_PUBLIC" },
+        { result: "rejected", reason: "VIDEO_NOT_PUBLIC", source: firebaseAvailable ? "firestore" : "mock" },
         { status: 200 }
       );
     }
 
     // 2) 核验通过 → 托管分账（事务原子：状态推进 + 佣金 + 平台服务费）
-    await db.runTransaction(async (tx) => {
-      const snap = await tx.get(subRef);
-      if (!snap.exists) return;
-      const data = snap.data();
-      // 事务内二次确认仍是 pending，防止并发重复结算
-      if (data.audit_metadata?.verification_status !== "pending") return;
+    if (firebaseAvailable) {
+      await db.runTransaction(async (tx) => {
+        const snap = await tx.get(subRef);
+        if (!snap.exists) return;
+        const data = snap.data();
+        // 事务内二次确认仍是 PENDING_AUDIT，防止并发重复结算
+        if (data.audit_metadata?.verification_status !== "PENDING_AUDIT") return;
 
-      tx.update(subRef, {
+        tx.update(subRef, {
+          "audit_metadata.verification_status": "verified",
+          submitted_at: new Date().toISOString(),
+          payout_status: "paid",
+          updated_at: new Date().toISOString(),
+        });
+
+        // 佣金：$3.00 划入接单人可用提现余额
+        const workerRef = db.collection("users").doc(data.worker_id);
+        tx.set(workerRef, {
+          balance_usd: FieldValue.increment(PLATFORM_PAYOUT),
+        }, { merge: true });
+
+        // 平台纯技术服务费：$1.00 计入总部官方利润账户
+        const platformRef = db.collection("platform_accounts").doc("official_profit");
+        tx.set(platformRef, {
+          service_fee_balance_usd: FieldValue.increment(PLATFORM_FEE),
+        }, { merge: true });
+
+        // 任务名额递增（与 campaigns.escrow_summary 对账）
+        const campaignRef = db.collection("campaigns").doc(data.campaign_id);
+        tx.update(campaignRef, {
+          "escrow_summary.slots_used": FieldValue.increment(1),
+        });
+      });
+    } else {
+      // 本地 mock 结算
+      const m = mockSubmissions.get(submissionId);
+      if (m.audit_metadata?.verification_status !== "PENDING_AUDIT") {
+        return NextResponse.json({ error: "NOT_PENDING", status: m.audit_metadata?.verification_status }, { status: 409 });
+      }
+      Object.assign(m, {
         "audit_metadata.verification_status": "verified",
         submitted_at: new Date().toISOString(),
         payout_status: "paid",
         updated_at: new Date().toISOString(),
       });
-
-      // 佣金：$3.00 划入接单人可用提现余额
-      const workerRef = db.collection("users").doc(data.worker_id);
-      tx.set(workerRef, {
-        balance_usd: FieldValue.increment(PLATFORM_PAYOUT),
-      }, { merge: true });
-
-      // 平台纯技术服务费：$1.00 计入总部官方利润账户
-      const platformRef = db.collection("platform_accounts").doc("official_profit");
-      tx.set(platformRef, {
-        service_fee_balance_usd: FieldValue.increment(PLATFORM_FEE),
-      }, { merge: true });
-
-      // 任务名额递增（与 campaigns.escrow_summary 对账）
-      const campaignRef = db.collection("campaigns").doc(data.campaign_id);
-      tx.update(campaignRef, {
-        "escrow_summary.slots_used": FieldValue.increment(1),
-      });
-    });
+      const balance = (mockUsers.get(m.worker_id)?.balance_usd || 0) + PLATFORM_PAYOUT;
+      mockUsers.set(m.worker_id, { balance_usd: balance });
+      mockPlatform.service_fee_balance_usd += PLATFORM_FEE;
+    }
 
     return NextResponse.json(
       {
         result: "verified",
         payout: { worker_usd: PLATFORM_PAYOUT, platform_fee_usd: PLATFORM_FEE },
+        source: firebaseAvailable ? "firestore" : "mock",
       },
       { status: 200 }
     );

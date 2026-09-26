@@ -4,6 +4,7 @@
 // 兼容策略：装有 firebase-admin 时写真实 Firestore；未装时降级本地 mock，便于本地联调。
 
 import { NextResponse } from "next/server";
+import { mockSubmissions, mockCampaigns } from "../_mock-store";
 
 let db = null;
 let firebaseAvailable = false;
@@ -128,6 +129,10 @@ export async function POST(request) {
       submissionId = ref.id;
     } else {
       submissionId = `sub_local_${Date.now()}`;
+      mockSubmissions.set(submissionId, { ...submission });
+      if (campaignId && !mockCampaigns.has(campaignId)) {
+        mockCampaigns.set(campaignId, { geo, escrow });
+      }
     }
 
     return NextResponse.json(

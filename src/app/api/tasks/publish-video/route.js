@@ -4,20 +4,28 @@
 // 约束：仅 pending 可回填；已进入 verified/rejected 终态则拒绝，防止结算后篡改。
 
 import { NextResponse } from "next/server";
-import { initializeApp, cert, getApps } from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
+import { mockSubmissions } from "../_mock-store";
 
-// ---- Firebase Admin 单例（F-CrowdBang）----
-if (!getApps().length) {
-  initializeApp({
-    credential: cert({
-      projectId: process.env.FIREBASE_PROJECT_ID,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
-    }),
-  });
+// ---- Firebase Admin 单例（F-CrowdBang）；缺依赖时降级本地 mock，保证本地联调可运行 ----
+let db = null;
+let firebaseAvailable = false;
+try {
+  const { initializeApp, cert, getApps } = await import("firebase-admin/app");
+  const { getFirestore } = await import("firebase-admin/firestore");
+  if (!getApps().length) {
+    initializeApp({
+      credential: cert({
+        projectId: process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: (process.env.FIREBASE_PRIVATE_KEY || "").replace(/\\n/g, "\n"),
+      }),
+    });
+  }
+  db = getFirestore();
+  firebaseAvailable = true;
+} catch (e) {
+  console.warn("[publish-video] firebase-admin unavailable, using local mock");
 }
-const db = getFirestore();
 
 export async function POST(request) {
   try {
@@ -26,20 +34,29 @@ export async function POST(request) {
       return NextResponse.json({ error: "MISSING_FIELDS" }, { status: 400 });
     }
 
-    const subRef = db.collection("submissions").doc(submissionId);
-    const snap = await subRef.get();
-    if (!snap.exists) {
-      return NextResponse.json({ error: "SUBMISSION_NOT_FOUND" }, { status: 404 });
+    let submission;
+    if (firebaseAvailable) {
+      const subRef = db.collection("submissions").doc(submissionId);
+      const snap = await subRef.get();
+      if (!snap.exists) {
+        return NextResponse.json({ error: "SUBMISSION_NOT_FOUND" }, { status: 404 });
+      }
+      submission = snap.data();
+    } else {
+      const m = mockSubmissions.get(submissionId);
+      if (!m) {
+        return NextResponse.json({ error: "SUBMISSION_NOT_FOUND" }, { status: 404 });
+      }
+      submission = m;
     }
-    const submission = snap.data();
 
     // 归属校验：只有接单本人可回填
     if (submission.worker_id !== workerId) {
       return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
     }
 
-    // 状态约束：仅 pending 可回填，终态不可逆
-    if (submission.audit_metadata?.verification_status !== "pending") {
+    // 状态约束：仅 PENDING_AUDIT 可回填，终态不可逆
+    if (submission.audit_metadata?.verification_status !== "PENDING_AUDIT") {
       return NextResponse.json(
         { error: "NOT_PENDING", status: submission.audit_metadata?.verification_status },
         { status: 409 }
@@ -47,11 +64,16 @@ export async function POST(request) {
     }
 
     // 回填视频 ID
-    await subRef.update({
+    const update = {
       "audit_metadata.published_video_id": publishedVideoId,
       submitted_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-    });
+    };
+    if (firebaseAvailable) {
+      await db.collection("submissions").doc(submissionId).update(update);
+    } else {
+      Object.assign(mockSubmissions.get(submissionId), update);
+    }
 
     return NextResponse.json({ result: "updated", submissionId }, { status: 200 });
   } catch (err) {

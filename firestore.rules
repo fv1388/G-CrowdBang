@@ -31,10 +31,10 @@ service cloud.firestore {
 
     // ---------- 集合二：submissions（接单与设备对账总表）----------
     match /submissions/{submissionId} {
-      // 创建：仅接单用户，worker 必须是本人；初始态必须为 pending + held
+      // 创建：仅接单用户，worker 必须是本人；初始态必须为 PENDING_AUDIT + held
       allow create: if isWorker()
         && request.resource.data.worker_id == request.auth.uid
-        && request.resource.data.audit_metadata.verification_status == 'pending'
+        && request.resource.data.audit_metadata.verification_status == 'PENDING_AUDIT'
         && request.resource.data.payout_status == 'held';
 
       // 读取：本人接单 或 任务所属商户 或 管理员
@@ -43,10 +43,10 @@ service cloud.firestore {
         || (isMerchant()
             && get(/databases/$(database)/documents/campaigns/$(resource.data.campaign_id)).data.owner_merchant_id == request.auth.uid);
 
-      // 更新：pending 阶段本人可改可编辑字段；核验/资金终态仅服务端(admin)
+      // 更新：PENDING_AUDIT 阶段本人可改可编辑字段；核验/资金终态仅服务端(admin)
       // 同时强制：核验状态与资金状态只能由 admin 变更（worker 不可自改终态）
       allow update: if (isWorker() && isOwner(resource.data.worker_id)
-                        && resource.data.audit_metadata.verification_status == 'pending'
+                        && resource.data.audit_metadata.verification_status == 'PENDING_AUDIT'
                         && request.resource.data.audit_metadata.verification_status == resource.data.audit_metadata.verification_status
                         && request.resource.data.payout_status == resource.data.payout_status)
         || isAdmin();
