@@ -123,5 +123,22 @@ service cloud.firestore {
             && get(/databases/$(database)/documents/merchants/$(resource.data.merchant_id)).data.merchant_id == request.auth.uid);
       allow write: if isAdmin();
     }
+    // ---------- 集合九：tiktok_oauth_tokens（TikTok OAuth 令牌记录）----------
+    // 令牌的写入/刷新/吊销均由服务端(admin)在 OAuth 回调/刷新流程中完成；
+    // 商户仅能读取属于本人的令牌元数据（用于管理面板），前端严禁直接改/读原始 access_token。
+    match /tiktok_oauth_tokens/{tokenId} {
+      allow read: if isAdmin()
+        || (isMerchant() && get(/databases/$(database)/documents/merchants/$(resource.data.merchant_id)).data.merchant_id == request.auth.uid);
+      allow write: if isAdmin();
+    }
+
+    // ---------- 集合十：tiktok_token_ledger（TikTok 令牌流转对账账本）----------
+    // 令牌 ISSUED/REFRESHED/REVOKED/EXPIRED 每步都追加一条对账单（供审计对账）。
+    // 商户只读自己的令牌流转流水；写入仅服务端 admin；前端不可写。
+    match /tiktok_token_ledger/{ledgerId} {
+      allow read: if isAdmin()
+        || (isMerchant() && get(/databases/$(database)/documents/merchants/$(resource.data.merchant_id)).data.merchant_id == request.auth.uid);
+      allow write: if isAdmin();
+    }
   }
 }

@@ -167,3 +167,57 @@ A端商户先向账户钱包充值（如 $100），发布悬赏时从该余额�
 | payment_order_id | string | 第三方支付平台订单 ID |
 | status | string | 固定 "COMPLETED"（充值已完成） |
 | created_at | string | 充值时间戳 |
+
+---
+
+## 集合九：`tiktok_oauth_tokens`（TikTok OAuth 令牌记录）
+
+商户在「海外老外接单大厅」连接/授权 TikTok 创作者账号时，服务端在标准 OAuth 回调流程中
+将官方签发的临时访问令牌（access_token）与其刷新令牌（refresh_token）规范写入本集合，
+供后续「发布视频」「公开状态反查」等环节以合规 Bearer 方式使用。
+
+```json
+{
+  "token_id": "tt_9d2f1a7c",
+  "merchant_id": "mch_8d1e4f5a",
+  "tiktok_open_id": "7328_creator_open_id",
+  "display_name": "CreatorHandle",
+  "access_token": "<official access token>",
+  "access_token_expires_at": "2026-10-01T12:00:00Z",
+  "refresh_token": "<official refresh token>",
+  "refresh_token_expires_at": "2026-11-01T12:00:00Z",
+  "scopes": ["video.publish", "user.info.basic"],
+  "status": "active",
+  "created_at": "2026-09-27T10:00:00Z",
+  "updated_at": "2026-09-27T10:00:00Z",
+  "last_refreshed_at": "2026-09-27T10:00:00Z"
+}
+```
+
+字段说明：
+- `access_token` / `refresh_token`：官方 OAuth 临时令牌；仅服务端(admin)读写，前端/商户控制台不直接读取明文。
+- `status`：`active`（有效）｜`expired`（过期）｜`revoked`（已吊销）。
+- `scopes`：授权范围数组（如 `video.publish`、`user.info.basic`）。
+- `access_token_fingerprint`：对账时不回显明文，改用非可逆哈希（见集合十）。
+
+## 集合十：`tiktok_token_ledger`（TikTok 令牌流转对账账本）
+
+令牌每发生一次 ISSUED（签发）/ REFRESHED（刷新）/ REVOKED（吊销）/ EXPIRED（过期），
+服务端即追加一条不可篡改的对账流水，用于 OAuth 令牌的完整生命周期审计与对账。
+
+```json
+{
+  "ledger_id": "ledger_9f31b2d8",
+  "token_id": "tt_9d2f1a7c",
+  "merchant_id": "mch_8d1e4f5a",
+  "event_type": "REFRESHED",
+  "access_token_fingerprint": "sha256:ab12cd34...",
+  "expires_at": "2026-10-15T12:00:00Z",
+  "created_at": "2026-09-27T10:30:00Z"
+}
+```
+
+字段说明：
+- `event_type`：`ISSUED`（初始签发）｜`REFRESHED`（刷新）｜`REVOKED`（吊销）｜`EXPIRED`（过期）。
+- `access_token_fingerprint`：对账凭证——令牌明文绝不入库对账，仅存非可逆哈希，避免对账单泄漏令牌。
+- 安全规则：写入仅服务端 admin；商户仅能读取本人令牌与其对账流水。
