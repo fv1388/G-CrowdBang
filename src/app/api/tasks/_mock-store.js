@@ -32,3 +32,29 @@ export function appendTikTokLedger(entry) {
   return mockTikTokLedger.get(ledgerId);
 }
 
+// ---- 深合并助手：把"点号键"的扁平更新安全地写进嵌套内存对象 ----
+// 背景：Firestore 支持点号符号（如 "audit_metadata.verification_status"），
+//       但 Object.assign 遇到这种键只会生成字面扁平键，不写入嵌套结构。
+//       内存 mock 对象必须用本函数才能真正推进嵌套状态（否则 cron/审计页会误判状态）。
+function deepSet(obj, path, value) {
+  const keys = path.split(".");
+  let cur = obj;
+  for (let i = 0; i < keys.length - 1; i++) {
+    const k = keys[i];
+    if (typeof cur[k] !== "object" || cur[k] === null) cur[k] = {};
+    cur = cur[k];
+  }
+  cur[keys[keys.length - 1]] = value;
+  return obj;
+}
+
+// 将含点号键的扁平更新对象应用到内存对象（兼容纯键，不破坏已有嵌套）
+export function applyFlatUpdate(obj, flatUpdates) {
+  if (!obj) return obj;
+  for (const [k, v] of Object.entries(flatUpdates || {})) {
+    if (k.includes(".")) deepSet(obj, k, v);
+    else obj[k] = v;
+  }
+  return obj;
+}
+

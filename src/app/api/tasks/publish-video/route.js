@@ -4,7 +4,7 @@
 // 约束：仅 pending 可回填；已进入 verified/rejected 终态则拒绝，防止结算后篡改。
 
 import { NextResponse } from "next/server";
-import { mockSubmissions } from "../_mock-store";
+import { mockSubmissions, applyFlatUpdate } from "../_mock-store";
 import { resolveTikTokBearer } from "../../tiktok/oauth/_resolve";
 
 // ---- Firebase Admin 单例（F-CrowdBang）；缺依赖时降级本地 mock，保证本地联调可运行 ----
@@ -95,7 +95,8 @@ export async function POST(request) {
     if (firebaseAvailable) {
       await db.collection("submissions").doc(submissionId).update(update);
     } else {
-      Object.assign(mockSubmissions.get(submissionId), update);
+      // 深合并：点号键需写入嵌套结构（Firestore 支持点号，内存对象必须深合并）
+      applyFlatUpdate(mockSubmissions.get(submissionId), update);
     }
 
     return NextResponse.json(

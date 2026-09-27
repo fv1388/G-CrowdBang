@@ -47,9 +47,11 @@ function currentWorkerId() {
 }
 
 // 金额校验：必须为正的有限数值，且不小于最小提现额
+// 财务风控：PayPal 跨境打款每笔有固定通道费，最小提现额锁定为 $15.00（约 5 单），
+//           避免"做一单提一单"被通道固定费吃光平台技术纯利（防恶意拆单抽干）。
 function validateAmount(amount) {
   const n = Number(amount);
-  const MIN_WITHDRAWAL = 1.0;
+  const MIN_WITHDRAWAL = 15.0;
   return Number.isFinite(n) && n >= MIN_WITHDRAWAL;
 }
 

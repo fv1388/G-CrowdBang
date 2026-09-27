@@ -4,7 +4,7 @@
 // 合规声明：仅使用官方公开 API + 显式平台标识的标准 fetch，不含任何指纹伪造或规避检测逻辑。
 
 import { NextResponse } from "next/server";
-import { mockSubmissions, mockUsers, mockPlatform, mockCampaigns } from "../_mock-store";
+import { mockSubmissions, mockUsers, mockPlatform, mockCampaigns, applyFlatUpdate } from "../_mock-store";
 import { resolveTikTokBearer } from "../../tiktok/oauth/_resolve";
 
 // ---- Firebase Admin 单例（F-CrowdBang）；缺依赖时降级本地 mock，保证本地联调可运行 ----
@@ -141,7 +141,7 @@ export async function POST(request) {
       if (firebaseAvailable) {
         await subRef.update(update);
       } else {
-        Object.assign(mockSubmissions.get(submissionId), update);
+        applyFlatUpdate(mockSubmissions.get(submissionId), update);
       }
       return NextResponse.json(
         { result: "rejected", reason: "VIDEO_NOT_PUBLIC", source: firebaseAvailable ? "firestore" : "mock" },
@@ -189,7 +189,7 @@ export async function POST(request) {
       if (m.audit_metadata?.verification_status !== "PENDING_AUDIT") {
         return NextResponse.json({ error: "NOT_PENDING", status: m.audit_metadata?.verification_status }, { status: 409 });
       }
-      Object.assign(m, {
+      applyFlatUpdate(m, {
         "audit_metadata.verification_status": "verified",
         submitted_at: new Date().toISOString(),
         payout_status: "paid",

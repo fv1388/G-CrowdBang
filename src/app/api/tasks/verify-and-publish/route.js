@@ -1,19 +1,23 @@
 // src/app/api/tasks/verify-and-publish/route.js
 // G-CrowdBang / F-CrowdBang · 设备位置校验与对账单暂存接口（App Router Route Handler）
 // 职责：接收前端上报的硬件经纬度 → 判空/类型校验 → 地理围栏(Geofencing)区间校验
-//       → 写入 submissions 对账总表，初始状态 audit_metadata.verification_status="PENDING_AUDIT"。
-// 兼容策略：装有 firebase-admin 且凭证真实时写 Firestore；否则写共享本地 mock 账本，便于本地联调。
-// 合规：仅做标准参数校验与数学范围判定，不涉及任何伪装/规避逻辑。
+//       → 【原子名额锁】反超卖扣减剩余名额 → 写入 submissions 对账总表 PENDING_AUDIT。
+// 并发防超卖：高价值任务仅剩 1 个名额时，10 个并发接单请求必须串行化扣减，杜绝资金穿仓。
+//  - Firestore：db.runTransaction 原子事务锁，读取→校验→-1 一并提交，减后 <0 熔断 "TASK_FULL"。
+//  - 本地 mock：Node 单进程内 读→校验→扣减 在同一同步块完成（无 await 夹缝），天然串行。
+// 合规：仅做标准参数校验、数学范围判定与名额扣减，不涉及任何伪装/规避逻辑。
 
 import { NextResponse } from "next/server";
 import { putSubmission, mockSubmissions, mockCampaigns } from "../_mock-store";
 
 let db = null;
 let firebaseAvailable = false;
+let FieldValue = null;
 
 try {
   const { initializeApp, cert, getApps } = await import("firebase-admin/app");
-  const { getFirestore } = await import("firebase-admin/firestore");
+  const fstore = await import("firebase-admin/firestore");
+  FieldValue = fstore.FieldValue;
   if (!getApps().length) {
     initializeApp({
       credential: cert({
@@ -23,7 +27,7 @@ try {
       }),
     });
   }
-  db = getFirestore();
+  db = fstore.getFirestore();
   firebaseAvailable = true;
 } catch (e) {
   console.warn("[verify-and-publish] firebase-admin unavailable, using local mock");
@@ -63,9 +67,6 @@ function haversineKm(lat1, lon1, lat2, lon2) {
 }
 
 // ---- 地理围栏区间校验 ----
-// 1) 基础数学范围框检：上报经纬度必须落在任务配置的粗略地理边界方框内
-//    （如美国本土 bounding box），先做粗筛；
-// 2) 再校验与任务区域中心的球面距离 ≤ 半径。
 function withinBoundingBox(latitude, longitude, box) {
   if (!box) return true;
   const inLat = latitude >= box.minLat && latitude <= box.maxLat;
@@ -79,6 +80,28 @@ function withinGeofence(latitude, longitude, geo) {
   const dist = haversineKm(latitude, longitude, geo.target_lat ?? 0, geo.target_lng ?? 0);
   const radiusOk = dist <= (geo.radius_km ?? 0);
   return boxOk && radiusOk;
+}
+
+// mock 模式下获取/播种任务的地理围栏配置
+function mockGeoFor(campaignId) {
+  const MOCK_GEO = {
+    cmp_demo_001: {
+      enabled: true, target_city: "Jacksonville", target_state: "FL",
+      target_lat: 30.3322, target_lng: -81.6557, radius_km: 80,
+      bounding_box: { minLat: 24.5, maxLat: 49.5, minLng: -125, maxLng: -67 }, // 美国本土粗略框
+    },
+    cmp_demo_002: {
+      enabled: true, target_city: "Orlando", target_state: "FL",
+      target_lat: 28.5383, target_lng: -81.3792, radius_km: 80,
+      bounding_box: { minLat: 24.5, maxLat: 49.5, minLng: -125, maxLng: -67 },
+    },
+    cmp_demo_003: {
+      enabled: true, target_city: "Tampa", target_state: "FL",
+      target_lat: 27.9506, target_lng: -82.4572, radius_km: 80,
+      bounding_box: { minLat: 24.5, maxLat: 49.5, minLng: -125, maxLng: -67 },
+    },
+  };
+  return MOCK_GEO[campaignId] || { enabled: false, target_city: "Anywhere", target_state: "US" };
 }
 
 export async function POST(request) {
@@ -100,58 +123,31 @@ export async function POST(request) {
       return NextResponse.json({ error: "INVALID_COORDINATES" }, { status: 400 });
     }
 
+    // 1) 载入任务配置（campaign），确定地理围栏与总名额
     let geo = { enabled: false };
-    let escrow = { slots_used: 0, total_slots: 0 };
-    let campaignFound = false;
+    let totalSlots = 0;
 
     if (firebaseAvailable) {
       const snap = await db.collection("campaigns").doc(campaignId).get();
-      if (snap.exists) {
-        campaignFound = true;
-        const c = snap.data();
-        geo = c.geotargeting_config || {};
-        escrow = c.escrow_summary || {};
+      if (!snap.exists) {
+        return NextResponse.json({ error: "CAMPAIGN_NOT_FOUND" }, { status: 404 });
       }
+      const c = snap.data();
+      geo = c.geotargeting_config || {};
+      totalSlots = c.escrow_summary?.total_slots || 0;
     } else {
-      // 本地 mock：演示任务映射到与列表一致的区域围栏，便于本地联调验证 Geofencing
-      const MOCK_GEO = {
-        cmp_demo_001: {
-          enabled: true, target_city: "Jacksonville", target_state: "FL",
-          target_lat: 30.3322, target_lng: -81.6557, radius_km: 80,
-          bounding_box: { minLat: 24.5, maxLat: 49.5, minLng: -125, maxLng: -67 }, // 美国本土粗略框
-        },
-        cmp_demo_002: {
-          enabled: true, target_city: "Orlando", target_state: "FL",
-          target_lat: 28.5383, target_lng: -81.3792, radius_km: 80,
-          bounding_box: { minLat: 24.5, maxLat: 49.5, minLng: -125, maxLng: -67 },
-        },
-        cmp_demo_003: {
-          enabled: true, target_city: "Tampa", target_state: "FL",
-          target_lat: 27.9506, target_lng: -82.4572, radius_km: 80,
-          bounding_box: { minLat: 24.5, maxLat: 49.5, minLng: -125, maxLng: -67 },
-        },
-      };
-      if (MOCK_GEO[campaignId]) {
-        campaignFound = true;
-        geo = MOCK_GEO[campaignId];
-        escrow = { slots_used: 0, total_slots: 1000 };
-      } else {
-        campaignFound = true;
-        geo = { enabled: false };
-        escrow = { slots_used: 0, total_slots: 1000 };
+      const campaign = mockCampaigns.get(campaignId);
+      if (!campaign) {
+        return NextResponse.json({ error: "CAMPAIGN_NOT_FOUND" }, { status: 404 });
       }
+      geo = mockGeoFor(campaignId);
+      // 名额取自实际任务对象（列表形 slotsRemaining，或 escrow_summary.total_slots）
+      totalSlots = typeof campaign.slotsRemaining === "number"
+        ? campaign.slotsRemaining
+        : (campaign.escrow_summary?.total_slots || 0);
     }
 
-    if (!campaignFound) {
-      return NextResponse.json({ error: "CAMPAIGN_NOT_FOUND" }, { status: 404 });
-    }
-
-    // 名额封顶预检
-    if ((escrow.slots_used || 0) >= (escrow.total_slots || 0)) {
-      return NextResponse.json({ error: "TASK_FULL" }, { status: 409 });
-    }
-
-    // 地理围栏区间校验（服务端二次校验，不信任前端）
+    // 2) 地理围栏区间校验（服务端二次校验，不信任前端）——先验围栏再扣名额，避免越界单白占名额
     const isAuthenticMatch = withinGeofence(latitude, longitude, geo);
     if (!isAuthenticMatch) {
       return NextResponse.json(
@@ -160,7 +156,7 @@ export async function POST(request) {
       );
     }
 
-    // 写入对账总表：硬件位置集合 hardware_geoloc + 初始审核状态 PENDING_AUDIT
+    // 3) 原子名额锁（反超卖）：读取剩余名额 → 校验 → 扣减 -1，减后 < 0 则熔断 "TASK_FULL"
     const submission = {
       campaign_id: campaignId,
       worker_id: workerId,
@@ -176,28 +172,65 @@ export async function POST(request) {
     };
 
     let submissionId;
+
     if (firebaseAvailable) {
-      const ref = db.collection("submissions").doc();
-      await ref.set(submission);
-      submissionId = ref.id;
+      // Firestore 原子事务：读任务 → 校验剩余名额 → 扣减 slots_used + 写 submission 一并提交
+      const campaignRef = db.collection("campaigns").doc(campaignId);
+      const subRef = db.collection("submissions").doc();
+      await db.runTransaction(async (tx) => {
+        const snap = await tx.get(campaignRef);
+        if (!snap.exists) throw new Error("CAMPAIGN_NOT_FOUND");
+        const used = snap.data()?.escrow_summary?.slots_used || 0;
+        const total = snap.data()?.escrow_summary?.total_slots || 0;
+        if (used >= total) throw new Error("TASK_FULL");
+        tx.update(campaignRef, { "escrow_summary.slots_used": FieldValue.increment(1) });
+        tx.set(subRef, { ...submission, submission_id: subRef.id });
+      });
+      submissionId = subRef.id;
     } else {
-      submissionId = `sub_local_${Date.now()}`;
-      putSubmission(submissionId, submission);
-      if (campaignId && !mockCampaigns.has(campaignId)) {
-        mockCampaigns.set(campaignId, { geo, escrow });
+      // 本地 mock：同步读→校验→扣减（无 await 夹缝，单进程内串行，等同原子）
+      const campaign = mockCampaigns.get(campaignId);
+      if (typeof campaign.slotsRemaining === "number") {
+        if (campaign.slotsRemaining <= 0) {
+          return NextResponse.json({ error: "TASK_FULL", slots_remaining: 0 }, { status: 409 });
+        }
+        campaign.slotsRemaining = campaign.slotsRemaining - 1;
+      } else {
+        const esc = campaign.escrow_summary || {};
+        const used = esc.slots_used || 0;
+        const total = esc.total_slots || 0;
+        if (used >= total) {
+          return NextResponse.json({ error: "TASK_FULL", slots_remaining: 0 }, { status: 409 });
+        }
+        campaign.escrow_summary = { ...esc, slots_used: used + 1 };
       }
+
+      submissionId = `sub_local_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+      putSubmission(submissionId, submission);
     }
+
+    const remaining = firebaseAvailable
+      ? undefined
+      : (mockCampaigns.get(campaignId)?.slotsRemaining ?? mockCampaigns.get(campaignId)?.escrow_summary?.slots_used);
 
     return NextResponse.json(
       {
         submissionId,
         status: "PENDING_AUDIT",
         is_authentic_match: true,
+        slots_remaining: firebaseAvailable ? undefined : remaining,
         source: firebaseAvailable ? "firestore" : "mock",
       },
       { status: 201 }
     );
   } catch (err) {
+    // 事务/熔断错误分流
+    if (err?.message === "TASK_FULL") {
+      return NextResponse.json({ error: "TASK_FULL", slots_remaining: 0 }, { status: 409 });
+    }
+    if (err?.message === "CAMPAIGN_NOT_FOUND") {
+      return NextResponse.json({ error: "CAMPAIGN_NOT_FOUND" }, { status: 404 });
+    }
     console.error("[verify-and-publish]", err);
     return NextResponse.json({ error: "INTERNAL_ERROR" }, { status: 500 });
   }
