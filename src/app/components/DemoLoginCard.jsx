@@ -10,6 +10,12 @@ import { useState } from "react";
 import Link from "next/link";
 import { signUpWithEmail } from "@/database/auth";
 
+// 本地 mock 模式密码不参与真实校验（firebaseConfigReady() 为 false），
+// 一键登录直接以开发者测试邮箱建立确定性会话（uid_<邮箱前缀>），无需手输。
+// 该按钮仅 localhost 渲染；生产走真实 Firebase 密码校验，此路径完全失效。
+const DEV_EMAIL = "suan147@qq.com";
+const DEV_MOCK_PASSWORD = "dev-mock-only-not-real";
+
 export default function DemoLoginCard({ role, backHref, introLabel }) {
   // 仅本地(localhost / 127.0.0.1)才显示演示登录；生产环境隐藏
   const [isLocal] = useState(() => {
@@ -21,6 +27,17 @@ export default function DemoLoginCard({ role, backHref, introLabel }) {
   const [email, setEmail] = useState("");
   const [pwd, setPwd] = useState("");
   const [msg, setMsg] = useState("");
+
+  // 一键开发者登录：免手输，直接建立确定性会话（本地 mock 专用）
+  const quickLogin = async () => {
+    try {
+      const s = await signUpWithEmail(DEV_EMAIL, DEV_MOCK_PASSWORD, role);
+      setMsg(`Signed in as ${role} (${s.uid}) — one-click dev session.`);
+    } catch (e) {
+      console.error("[DemoLoginCard] quick login failed", e);
+      setMsg("Quick sign-in failed.");
+    }
+  };
 
   const unlock = async () => {
     if (!email || !pwd) {
@@ -57,6 +74,21 @@ export default function DemoLoginCard({ role, backHref, introLabel }) {
       <p className="text-xs font-medium text-slate-500">
         Local demo — sign in as {role} ({introLabel || "developer only"})
       </p>
+
+      {/* 一键开发者登录（免手输；仅本地 mock） */}
+      <button
+        onClick={quickLogin}
+        className="mt-2 w-full rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+      >
+        One-click dev sign-in ({DEV_EMAIL})
+      </button>
+
+      <div className="mt-3 flex items-center gap-2 text-xs text-slate-400">
+        <span className="h-px flex-1 bg-slate-300" />
+        or type manually
+        <span className="h-px flex-1 bg-slate-300" />
+      </div>
+
       <input
         value={email}
         onChange={(e) => setEmail(e.target.value)}
