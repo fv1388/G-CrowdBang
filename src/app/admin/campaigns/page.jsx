@@ -9,7 +9,15 @@ import Link from "next/link";
 
 export default function MerchantCampaigns() {
   const [campaigns, setCampaigns] = useState([]);
+  const [balance, setBalance] = useState(0);
   const [loadState, setLoadState] = useState("loading"); // loading | ok | error
+
+  // 充值表单状态
+  const [depositAmount, setDepositAmount] = useState("");
+  const [paymentOrderId, setPaymentOrderId] = useState("");
+  const [depositState, setDepositState] = useState("idle"); // idle | submitting | success | error
+  const [depositMsg, setDepositMsg] = useState("");
+  const [lastDepositId, setLastDepositId] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -20,6 +28,7 @@ export default function MerchantCampaigns() {
         const data = await res.json();
         if (!cancelled) {
           setCampaigns(data.campaigns ?? []);
+          setBalance(data.balance_usd ?? 0);
           setLoadState("ok");
         }
       } catch (err) {
@@ -29,6 +38,50 @@ export default function MerchantCampaigns() {
     })();
     return () => { cancelled = true; };
   }, []);
+
+  // 充值到钱包 → POST /api/merchant/deposit
+  const topUp = async () => {
+    const amt = Number(depositAmount);
+    if (!(amt > 0)) {
+      setDepositMsg("Enter a valid deposit amount.");
+      setDepositState("error");
+      return;
+    }
+    if (!paymentOrderId) {
+      setDepositMsg("Enter the payment order ID from your payment provider.");
+      setDepositState("error");
+      return;
+    }
+
+    setDepositState("submitting");
+    setDepositMsg("");
+    try {
+      const res = await fetch("/api/merchant/deposit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ merchantId: "mch_placeholder", depositAmount: amt, paymentOrderId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setDepositMsg(
+          data?.error === "PAYMENT_NOT_VERIFIED"
+            ? "Payment not verified — check the order ID."
+            : "Deposit failed. Please try again."
+        );
+        setDepositState("error");
+        return;
+      }
+      setLastDepositId(data.depositId ?? null);
+      setBalance(data.balance_usd ?? 0);
+      setDepositAmount("");
+      setPaymentOrderId("");
+      setDepositState("success");
+    } catch (err) {
+      console.error("[admin/campaigns] deposit failed", err);
+      setDepositState("error");
+      setDepositMsg("Network error — please try again.");
+    }
+  };
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900">
@@ -46,6 +99,57 @@ export default function MerchantCampaigns() {
           >
             + New Campaign
           </Link>
+        </div>
+
+        {/* 商户钱包：余额 + 充值 */}
+        <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h2 className="font-semibold">Merchant Wallet</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Available escrow balance: <strong className="text-indigo-600">${Number(balance).toFixed(2)}</strong>
+          </p>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="block text-sm text-slate-600">Deposit amount (USD)</label>
+              <input
+                type="number"
+                min="1"
+                step="0.01"
+                value={depositAmount}
+                onChange={(e) => setDepositAmount(e.target.value)}
+                placeholder="e.g. 100.00"
+                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-slate-600">Payment order ID</label>
+              <input
+                type="text"
+                value={paymentOrderId}
+                onChange={(e) => setPaymentOrderId(e.target.value)}
+                placeholder="paypal_order_xxx"
+                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+          </div>
+
+          <button
+            onClick={topUp}
+            disabled={depositState === "submitting"}
+            className="mt-4 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+          >
+            {depositState === "submitting" ? "Verifying payment..." : "Top Up Wallet"}
+          </button>
+
+          {depositState === "success" && (
+            <p className="mt-3 rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-700">
+              ✅ Deposit confirmed ({(lastDepositId ? `#${lastDepositId}` : "")}). Balance updated to $
+              {Number(balance).toFixed(2)}.
+            </p>
+          )}
+          {depositState === "error" && (
+            <p className="mt-3 rounded-lg bg-rose-50 border border-rose-200 p-3 text-sm text-rose-700">{depositMsg}</p>
+          )}
         </div>
 
         {loadState === "loading" && <p className="mt-8 text-slate-500">Loading campaigns...</p>}

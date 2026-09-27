@@ -63,8 +63,18 @@ export async function GET() {
     const merchantId = currentMerchantId();
 
     if (!firebaseAvailable) {
-      return NextResponse.json({ campaigns: MOCK_MERCHANT_CAMPAIGNS, source: "mock" }, { status: 200 });
+      // 返回商户钱包余额 + 该商户任务
+      const balanceUsd = mockMerchants.get(merchantId)?.balance_usd ?? 0;
+      return NextResponse.json(
+        { campaigns: MOCK_MERCHANT_CAMPAIGNS, balance_usd: balanceUsd, source: "mock" },
+        { status: 200 }
+      );
     }
+
+    // 商户钱包余额
+    let balanceUsd = 0;
+    const mSnap = await db.collection("merchants").doc(merchantId).get();
+    if (mSnap.exists) balanceUsd = mSnap.data()?.balance_usd || 0;
 
     // 仅返回该商户自己的任务（归属过滤）
     const snap = await db.collection("campaigns")
@@ -90,7 +100,7 @@ export async function GET() {
       };
     });
 
-    return NextResponse.json({ campaigns, source: "firestore" }, { status: 200 });
+    return NextResponse.json({ campaigns, balance_usd: balanceUsd, source: "firestore" }, { status: 200 });
   } catch (err) {
     console.error("[admin/campaigns] GET", err);
     return NextResponse.json({ error: "INTERNAL_ERROR" }, { status: 500 });
