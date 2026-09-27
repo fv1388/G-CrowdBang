@@ -5,7 +5,7 @@
 // 兼容策略：装有 firebase-admin 读 Firestore；未装时降级本地 mock，保证本地联调。
 
 import { NextResponse } from "next/server";
-import { mockSubmissions } from "../../tasks/_mock-store";
+import { mockSubmissions, mockUsers } from "../../tasks/_mock-store";
 
 let db = null;
 let firebaseAvailable = false;
@@ -72,7 +72,9 @@ export async function GET(request) {
               claimedAt: new Date(Date.now() - 86400000).toISOString(),
             },
           ];
-      return NextResponse.json({ submissions: list, source: "mock" }, { status: 200 });
+      // 当前可用提现余额（结算入账后由 verify-and-payout 写入 mockUsers）
+      const balanceUsd = mockUsers.get(workerId)?.balance_usd ?? 0;
+      return NextResponse.json({ submissions: list, balance_usd: balanceUsd, source: "mock" }, { status: 200 });
     }
 
     const snap = await db.collection("submissions")
@@ -92,7 +94,12 @@ export async function GET(request) {
       };
     });
 
-    return NextResponse.json({ submissions: list, source: "firestore" }, { status: 200 });
+    // 当前可用提现余额（users 集合 balance_usd）
+    let balanceUsd = 0;
+    const userSnap = await db.collection("users").doc(workerId).get();
+    if (userSnap.exists) balanceUsd = userSnap.data()?.balance_usd || 0;
+
+    return NextResponse.json({ submissions: list, balance_usd: balanceUsd, source: "firestore" }, { status: 200 });
   } catch (err) {
     console.error("[workers/my-submissions] GET", err);
     return NextResponse.json({ error: "INTERNAL_ERROR" }, { status: 500 });
