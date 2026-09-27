@@ -1,4 +1,54 @@
 {
-  "indexes": [],
+  "indexes": [
+    {
+      "collectionGroup": "submissions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "campaign_id", "order": "ASCENDING" },
+        { "fieldPath": "claim_timestamp", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "submissions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "worker_id", "order": "ASCENDING" },
+        { "fieldPath": "claim_timestamp", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "campaigns",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "owner_merchant_id", "order": "ASCENDING" },
+        { "fieldPath": "created_at", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "tiktok_oauth_tokens",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "merchant_id", "order": "ASCENDING" },
+        { "fieldPath": "last_refreshed_at", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "tiktok_oauth_tokens",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "merchant_id", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "last_refreshed_at", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "tiktok_token_ledger",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "merchant_id", "order": "ASCENDING" },
+        { "fieldPath": "created_at", "order": "DESCENDING" }
+      ]
+    }
+  ],
   "fieldOverrides": []
 }
