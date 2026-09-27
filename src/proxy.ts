@@ -45,7 +45,7 @@ function resolveRewriteTarget(pathname: string): string | null {
   return null;
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // 1) Admin console section (clean, no third-party ad injection).
