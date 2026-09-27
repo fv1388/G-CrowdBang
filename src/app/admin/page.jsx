@@ -140,13 +140,18 @@ export default function MerchantConsole() {
         <div className="w-full max-w-md rounded-2xl border border-rose-200 bg-white p-8 text-center shadow-sm">
           <p className="text-6xl">🚫</p>
           <h1 className="mt-4 text-2xl font-bold text-rose-600">403 · Forbidden</h1>
+          <p className="text-sm text-rose-500">403 · 禁止访问</p>
           <p className="mt-2 text-sm text-slate-600">
             This is the Merchant Console. Your session role is{" "}
             <strong>{session?.role ?? "none"}</strong> — merchant access is required.
           </p>
+          <p className="mt-1 text-sm text-slate-500">
+            这里是商家控制台。当前会话角色为 <strong>{session?.role ?? "无"}</strong>，需要商家身份才能访问。
+          </p>
           <p className="mt-1 text-xs text-slate-400">
             Data channels are physically blocked for non-merchant roles.
           </p>
+          <p className="mt-1 text-xs text-slate-500">非商户角色的数据通道已被物理阻断。</p>
 
           {/* 本地开发者演示登录（仅 localhost 渲染；生产线上隐藏，防客户旁路自注册） */}
           <DemoLoginCard role="merchant" backHref="/" />
@@ -170,17 +175,22 @@ export default function MerchantConsole() {
 
       <div className="max-w-5xl mx-auto px-6 py-12">
         <h1 className="text-3xl font-bold">Merchant Console</h1>
+        <p className="text-sm text-slate-500">商家控制台</p>
         <p className="mt-2 text-slate-600">Top up your USD escrow wallet, then publish bounty campaigns.</p>
+        <p className="text-sm text-slate-500">先充值你的美元托管钱包，再发布悬赏任务。</p>
 
         {/* 钱包充值卡 */}
         <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="font-semibold">USD Wallet (PayPal)</h2>
+          <p className="text-xs text-slate-500">美元钱包（PayPal）</p>
           <p className="mt-1 text-sm text-slate-500">
             Available escrow balance: <strong className="text-indigo-600">${Number(balance).toFixed(2)}</strong>
           </p>
+          <p className="text-xs text-slate-500">可用托管余额：${Number(balance).toFixed(2)}</p>
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
             <div className="flex-1">
               <label className="block text-sm text-slate-600">Deposit amount (USD)</label>
+              <p className="text-xs text-slate-500">充值金额（美元）</p>
               <input
                 type="number"
                 min="1"
@@ -198,6 +208,7 @@ export default function MerchantConsole() {
             >
               {topUpState === "submitting" ? "Verifying PayPal..." : "Top Up via PayPal"}
             </button>
+            <p className="text-xs text-slate-500">通过 PayPal 充值</p>
           </div>
           {topUpState === "success" && (
             <p className="mt-3 rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-700">
@@ -212,11 +223,14 @@ export default function MerchantConsole() {
         {/* 发布悬赏表单 */}
         <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="font-semibold">Publish &amp; Deposit Escrow</h2>
+          <p className="text-xs text-slate-500">发布悬赏并托管资金</p>
           <p className="mt-1 text-sm text-slate-500">Funds (slots × (payout + $1 fee)) are held in escrow until work is verified.</p>
+          <p className="text-xs text-slate-500">资金（名额 ×（佣金 + $1 平台费））在作品核验前托管冻结。</p>
 
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
               <label className="block text-sm text-slate-600">Title</label>
+              <p className="text-xs text-slate-500">任务标题</p>
               <input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
@@ -226,6 +240,7 @@ export default function MerchantConsole() {
             </div>
             <div className="sm:col-span-2">
               <label className="block text-sm text-slate-600">Video asset URL</label>
+              <p className="text-xs text-slate-500">视频素材地址</p>
               <input
                 value={videoUrl}
                 onChange={(e) => setVideoUrl(e.target.value)}
@@ -235,6 +250,7 @@ export default function MerchantConsole() {
             </div>
             <div className="sm:col-span-2">
               <label className="block text-sm text-slate-600">Caption (English)</label>
+              <p className="text-xs text-slate-500">美式文案（英文）</p>
               <textarea
                 value={caption}
                 onChange={(e) => setCaption(e.target.value)}
@@ -245,6 +261,7 @@ export default function MerchantConsole() {
             </div>
             <div>
               <label className="block text-sm text-slate-600">Total slots</label>
+              <p className="text-xs text-slate-500">总招募名额</p>
               <input
                 type="number"
                 min="1"
@@ -256,6 +273,7 @@ export default function MerchantConsole() {
             </div>
             <div>
               <label className="block text-sm text-slate-600">Payout rate ($/task)</label>
+              <p className="text-xs text-slate-500">单次佣金（美元/任务）</p>
               <input
                 type="number"
                 min="0"
@@ -275,6 +293,7 @@ export default function MerchantConsole() {
           >
             {publishState === "submitting" ? "Holding escrow..." : "Publish & Deposit Escrow"}
           </button>
+          <p className="mt-1 text-xs text-indigo-600">发布并托管资金</p>
 
           {publishState === "success" && (
             <p className="mt-3 rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-700">

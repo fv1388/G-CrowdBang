@@ -74,6 +74,9 @@ export default function DemoLoginCard({ role, backHref, introLabel }) {
       <p className="text-xs font-medium text-slate-500">
         Local demo — sign in as {role} ({introLabel || "developer only"})
       </p>
+      <p className="mt-1 text-xs text-slate-500">
+        本地演示 —— 以{role === "merchant" ? "商户" : "接单人"}身份登录（仅开发人员可用）
+      </p>
 
       {/* 一键开发者登录（免手输；仅本地 mock） */}
       <button
@@ -82,10 +85,12 @@ export default function DemoLoginCard({ role, backHref, introLabel }) {
       >
         One-click dev sign-in ({DEV_EMAIL})
       </button>
+      <p className="mt-1 text-xs text-emerald-700">一键开发者登录（无需输入，自动以 suan147@qq.com 进入）</p>
 
       <div className="mt-3 flex items-center gap-2 text-xs text-slate-400">
         <span className="h-px flex-1 bg-slate-300" />
         or type manually
+        <span className="text-slate-400">或手动输入</span>
         <span className="h-px flex-1 bg-slate-300" />
       </div>
 
@@ -110,6 +115,7 @@ export default function DemoLoginCard({ role, backHref, introLabel }) {
       >
         Unlock {role === "merchant" ? "Merchant Console" : "Task Hall"} (demo)
       </button>
+      <p className="mt-1 text-xs text-indigo-600">解锁{role === "merchant" ? "商户控制台" : "任务大厅"}（演示）</p>
       {msg && <p className="mt-2 text-xs text-slate-500">{msg}</p>}
       <Link href={backHref} className="mt-3 block text-center text-xs text-indigo-500 hover:underline">
         ← Back
