@@ -127,3 +127,30 @@ function settlement(submission, campaign) {
 | transfer_reference | string | 打款流水号（null 前为待打款） |
 
 安全规则：接单人仅能创建自己的申请且 status 必须为 PENDING_TRANSFER；打款终态仅 admin 可写；删除仅 admin。
+
+## 集合六：merchants（商户资金账户）
+
+A端商户先向账户钱包充值（如 $100），发布悬赏时从该余额扣减，避免每次现付。
+充值由服务端对接 PayPal 订单捕获回调验证真伪后自增 balance_usd。
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| merchant_id | string | 商户唯一 ID |
+| balance_usd | number | 可用赏金余额（美元） |
+| currency | string | 币种，默认 USD |
+| created_at / updated_at | string | 创建/更新时间 |
+
+安全规则：商户仅能读取自己的余额；balance_usd 仅服务端 admin（充值回调）可改，防前端自增刷金。
+
+## 集合七：merchant_transactions（商户资金流水）
+
+记录充值/扣减流水，保证可追溯审计。
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| merchant_id | string | 商户 ID |
+| type | string | deposit（充值）\| debit（发悬赏扣减） |
+| amount_usd | number | 金额 |
+| payment_reference | string | 支付流水号 |
+| verified | boolean | 支付是否已验证 |
+| created_at | string | 时间 |

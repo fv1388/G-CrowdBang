@@ -93,5 +93,26 @@ service cloud.firestore {
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }
+
+    // ---------- 集合六：merchants（商户资金账户）----------
+    // 商户仅能读取自己的余额；余额充值(balance_usd)仅服务端 admin（充值回调）可改，
+    // 防止商户前端自增余额刷金。
+    match /merchants/{merchantId} {
+      allow read: if isMerchant() && isOwner(resource.data.merchant_id)
+        || isAdmin();
+      allow create: if isMerchant()
+        && isOwner(request.resource.data.merchant_id)
+        && request.resource.data.balance_usd == 0;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ---------- 集合七：merchant_transactions（商户资金流水，可追溯）----------
+    match /merchant_transactions/{txnId} {
+      allow read: if isAdmin()
+        || (isMerchant()
+            && get(/databases/$(database)/documents/merchants/$(resource.data.merchant_id)).data.merchant_id == request.auth.uid);
+      allow write: if isAdmin();
+    }
   }
 }
