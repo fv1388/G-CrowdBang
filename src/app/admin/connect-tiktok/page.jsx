@@ -46,10 +46,21 @@ export default function ConnectTikTok() {
 
   useEffect(() => {
     if (!merchantId) return;
-    // 回调自动换码：URL 带 code → POST /api/tiktok/oauth/store 存储令牌
+    // 读取服务端换码回调后的结果提示（?connected=1 / ?error=1）
     const params = new URLSearchParams(window.location.search);
     const code = params.get("code");
+    const connected = params.get("connected");
+    const error = params.get("error");
+    if (connected === "1") {
+      setConnectState("success");
+      setConnectMsg("TikTok connected — official token stored securely.");
+    } else if (error === "1") {
+      setConnectState("error");
+      setConnectMsg("TikTok authorization failed. Please try again.");
+    }
+
     if (code) {
+      // 兼容旧路径：URL 直接带 code 时（demo 直连 / 未走服务端回调）自动 store
       (async () => {
         setConnectState("submitting");
         try {
@@ -70,7 +81,6 @@ export default function ConnectTikTok() {
           if (!res.ok) throw new Error(data?.error || "STORE_FAILED");
           setConnectMsg("TikTok connected — token stored.");
           setConnectState("success");
-          // 清除 URL 中的 code，避免重复提交
           window.history.replaceState({}, "", "/admin/connect-tiktok");
         } catch (err) {
           console.error("[connect-tiktok] callback exchange failed", err);
@@ -90,11 +100,11 @@ export default function ConnectTikTok() {
     const clientKey = process.env.NEXT_PUBLIC_TIKTOK_CLIENT_KEY;
     const redirectUri =
       process.env.NEXT_PUBLIC_TIKTOK_REDIRECT_URI ||
-      `${window.location.origin}/admin/connect-tiktok`;
+      `${window.location.origin}/api/auth/callback/tiktok`;
 
     if (clientKey) {
-      // 标准 OAuth 授权 URL（官方端点）
-      const state = `st_${Date.now()}`;
+      // 标准 OAuth 授权 URL（官方端点）；state 携带 merchantId，供服务端换码后归账
+      const state = `st_${merchantId}_${Date.now()}`;
       const url =
         `https://www.tiktok.com/v2/auth/authorize/` +
         `?client_key=${encodeURIComponent(clientKey)}` +
