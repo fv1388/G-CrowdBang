@@ -10,6 +10,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { signUpWithEmail, firebaseConfigReady } from "@/database/auth";
+import { GoogleLoginWidget } from "@/app/components/GoogleLoginWidget";
 
 function isLocalhost() {
   if (typeof window === "undefined") return false;
@@ -34,6 +35,7 @@ export default function LoginPage() {
     return m === "register" ? "register" : "signin";
   });
 
+  // 邮箱密码登录/注册
   const doLogin = async () => {
     if (!email || !pwd) {
       setMsg("Enter email and password. / 请输入邮箱和密码。");
@@ -100,6 +102,19 @@ export default function LoginPage() {
               autoComplete="new-password"
               className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 caret-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
+
+            {/* 一键谷歌注册登录 */}
+            <div className="mt-4 flex items-center gap-3">
+              <span className="h-px flex-1 bg-slate-200" />
+              <span className="text-xs text-slate-400">or · 或</span>
+              <span className="h-px flex-1 bg-slate-200" />
+            </div>
+            <div className="mt-3">
+              <GoogleLoginWidget role={role} />
+            </div>
+            <p className="mt-1 text-xs text-slate-400">
+              {mode === "register" ? "Sign up with Google / 用谷歌注册" : "Sign in with Google / 用谷歌登录"}
+            </p>
             <button
               onClick={doLogin}
               className="mt-4 w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700"

@@ -8,7 +8,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { signUpWithEmail } from "@/database/auth";
+import { signUpWithEmail, signInWithGoogle } from "@/database/auth";
 
 // 本地 mock 模式密码不参与真实校验（firebaseConfigReady() 为 false），
 // 一键登录直接以开发者测试邮箱建立确定性会话（uid_<邮箱前缀>），无需手输。
@@ -50,6 +50,17 @@ export default function DemoLoginCard({ role, backHref, introLabel }) {
     } catch (e) {
       console.error("[DemoLoginCard] sign-in failed", e);
       setMsg("Sign-in failed. Please try again.");
+    }
+  };
+
+  // 一键谷歌登录（本地 mock 走确定性测试 UID；真实配置后走官方弹窗）
+  const googleLogin = async () => {
+    try {
+      const s = await signInWithGoogle(role);
+      setMsg(`Google signed in as ${s.role} (${s.uid}) — demo session.`);
+    } catch (e) {
+      console.error("[DemoLoginCard] google sign-in failed", e);
+      setMsg("Google sign-in failed.");
     }
   };
 
@@ -103,6 +114,14 @@ export default function DemoLoginCard({ role, backHref, introLabel }) {
         One-click dev sign-in ({DEV_EMAIL})
       </button>
       <p className="mt-1 text-xs text-emerald-700">一键开发者登录（无需输入，自动以 suan147@qq.com 进入）</p>
+
+      <button
+        onClick={googleLogin}
+        className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+      >
+        <span className="text-sm">🌐</span> One-click Google sign-in / 一键谷歌登录
+      </button>
+      <p className="mt-1 text-xs text-slate-500">以 {role === "merchant" ? "商户" : "接单人"} 身份一键谷歌登录（本地演示）</p>
 
       <div className="mt-3 flex items-center gap-2 text-xs text-slate-400">
         <span className="h-px flex-1 bg-slate-300" />
