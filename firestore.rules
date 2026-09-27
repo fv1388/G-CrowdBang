@@ -80,5 +80,18 @@ service cloud.firestore {
       allow read: if isAdmin();
       allow write: if isAdmin();
     }
+
+    // ---------- 集合五：payout_requests（提现与打款对账单）----------
+    // 接单人仅能创建自己的提现申请，且创建时状态必须为 PENDING_TRANSFER；
+    // 打款终态(processed_at / transfer_reference)仅服务端 admin 可写；删除仅 admin。
+    match /payout_requests/{requestId} {
+      allow read: if (isWorker() && isOwner(resource.data.worker_id))
+        || isAdmin();
+      allow create: if isWorker()
+        && request.resource.data.worker_id == request.auth.uid
+        && request.resource.data.status == 'PENDING_TRANSFER';
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
   }
 }

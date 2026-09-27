@@ -108,3 +108,22 @@ function settlement(submission, campaign) {
 | campaigns | `geotargeting_config.target_state + status` | 任务大厅按区域筛选 |
 | submissions | `campaign_id + verification_status` | 商户查某任务核验进度 |
 | submissions | `worker_id + submitted_at` | 用户查自己的接单历史 |
+
+## 集合五：payout_requests（提现与打款对账单）
+
+接单人在 workers 余额中赚到佣金后，通过提现申请将可用余额转入外部账户（如 PayPal 邮箱），
+对账单写入本集合并标记为 PENDING_TRANSFER，等待官方人工或自动批量打款。
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| payout_request_id | string | 对账单唯一 ID（系统生成） |
+| worker_id | string | 发起提现的接单人 ID |
+| amount_usd | number | 提现金额（美元） |
+| payout_method | string | 提现方式，如 "paypal" |
+| destination | string | 提现账户地址（如 PayPal 邮箱） |
+| status | string | PENDING_TRANSFER（待打款）\| processed（已打款） |
+| request_timestamp | string | 申请时间 |
+| processed_at | string | 打款完成时间（null 前为待打款） |
+| transfer_reference | string | 打款流水号（null 前为待打款） |
+
+安全规则：接单人仅能创建自己的申请且 status 必须为 PENDING_TRANSFER；打款终态仅 admin 可写；删除仅 admin。
