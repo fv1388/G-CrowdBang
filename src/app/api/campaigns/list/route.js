@@ -31,6 +31,8 @@ const MOCK_CAMPAIGNS = [
   {
     id: "cmp_demo_001",
     title: "Unbox & Showcase — Home Gadget",
+    video_url: "/demo/unbox-home-gadget.mp4",
+    caption_text: "Unbox this compact home gadget and show how it fits your daily setup. Keep it honest and natural.",
     city: "Jacksonville",
     state: "FL",
     payout: 3.0,
@@ -40,6 +42,8 @@ const MOCK_CAMPAIGNS = [
   {
     id: "cmp_demo_002",
     title: "Budget Hack Reel — Kitchen Tool",
+    video_url: "/demo/kitchen-tool-hack.mp4",
+    caption_text: "Share a quick budget hack using this kitchen tool. Show a real result, not a scripted ad.",
     city: "Orlando",
     state: "FL",
     payout: 3.0,
@@ -49,6 +53,8 @@ const MOCK_CAMPAIGNS = [
   {
     id: "cmp_demo_003",
     title: "ASMR Setup Tour — Desk Light",
+    video_url: "/demo/desk-light-asmr.mp4",
+    caption_text: "Film a calm ASMR-style tour of your desk setup featuring this light. Natural light, no over-editing.",
     city: "Tampa",
     state: "FL",
     payout: 3.0,
@@ -79,6 +85,8 @@ export async function GET() {
       return {
         id: doc.id,
         title: d.title || "Untitled Campaign",
+        video_url: d.video_url || "",
+        caption_text: d.caption_text || "",
         city: geo.enabled ? geo.target_city : "Anywhere",
         state: geo.enabled ? geo.target_state : "US",
         payout: escrow.payout_rate ?? 3.0,

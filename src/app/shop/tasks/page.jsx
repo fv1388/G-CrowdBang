@@ -1,7 +1,7 @@
 // src/app/shop/tasks/page.jsx
-// G-CrowdBang · B端海外接单大厅（React + Tailwind）
-// 面向自由职业者/大学生：浏览悬赏 → 硬件GPS核验 → 发布并结算 $3.00
-// 极简、现代、移动优先；透明合规。
+// G-CrowdBang · B端海外用户接单大厅（React Client Component + Tailwind）
+// 透明合规的多租户页面交互：动态拉取未满员任务 → 视频卡矩阵渲染 → 每卡挂载硬件GPS校验按钮。
+// 数据源：GET /api/campaigns/list（服务端归属过滤，仅返回 open 且未满员任务）。
 "use client";
 
 import TaskButton from "@/shop/components/TaskButton";
@@ -9,10 +9,11 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 export default function TaskHallPage() {
-  const [activeCampaignId, setActiveCampaignId] = useState(null);
+  // 动态任务列表（来自 /api/campaigns/list）
   const [campaigns, setCampaigns] = useState([]);
-  const [loadState, setLoadState] = useState("loading");
+  const [loadState, setLoadState] = useState("loading"); // loading | ok | error
 
+  // 组件挂载(Mount)完成后，发起合规的本地 GET 异步拉取
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -32,13 +33,14 @@ export default function TaskHallPage() {
     return () => { cancelled = true; };
   }, []);
 
+  // 当前登录接单人（生产环境来自认证会话；此处以占位示意）
+  const workerId = "usr_current";
+
   const flow = [
-    { step: "Browse Available Bounties", body: "Pick a task from the live board — each shows the target city, payout, and remaining slots." },
+    { step: "Browse Available Bounties", body: "Pick a task from the live board — each shows the source video, target city, and the $3.00 payout." },
     { step: "Pass the Hardware GPS Check", body: "When you claim a task, your device runs a standard GPS check (navigator.geolocation) to confirm you're submitting from the task area." },
     { step: "Publish & Get Verified", body: "Post your video, submit the link, and our server verifies it's public and the claim is consistent — then your $3.00 is released to your balance." },
   ];
-
-  const active = campaigns.find((t) => t.id === activeCampaignId);
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900">
@@ -56,39 +58,69 @@ export default function TaskHallPage() {
 
       <section className="max-w-5xl mx-auto px-6 pt-14 pb-10 text-center">
         <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">Your Task Dashboard — Make Money Sharing Creator Videos</h1>
-        <p className="mt-4 text-lg text-slate-600 max-w-2xl mx-auto">Browse available bounty tasks in your area, complete the hardware GPS check, publish your video, and get paid $3.00 once your work is verified.</p>
-        <a href="#tasks" className="mt-6 inline-block px-6 py-3 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700">Browse Tasks</a>
+        <p className="mt-4 text-lg text-slate-600 max-w-2xl mx-auto">
+          Browse available bounty tasks in your area, complete the hardware GPS check, publish your video, and get paid $3.00 once your work is verified.
+        </p>
+        <a href="#tasks" className="mt-6 inline-block px-6 py-3 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700">
+          Browse Tasks
+        </a>
       </section>
 
-      <section id="tasks" className="max-w-4xl mx-auto px-6 pb-10">
+      <section id="tasks" className="max-w-5xl mx-auto px-6 pb-10">
         <h2 className="text-2xl font-bold">Available Bounties</h2>
-        {loadState === "loading" && <p className="mt-4 text-slate-500">Loading campaigns...</p>}
-        {loadState === "error" && <p className="mt-4 rounded-xl bg-amber-50 border border-amber-200 p-4 text-sm text-amber-700">Campaigns are temporarily unavailable. Please try again shortly.</p>}
-        {loadState === "ok" && campaigns.length === 0 && <p className="mt-4 text-slate-500">No open bounties right now — check back soon.</p>}
 
-        <div className="mt-5 space-y-4">
+        {loadState === "loading" && (
+          <p className="mt-4 text-slate-500">⏳ Loading available crowdsourcing tasks...</p>
+        )}
+        {loadState === "error" && (
+          <p className="mt-4 rounded-xl bg-amber-50 border border-amber-200 p-4 text-sm text-amber-700">
+            Campaigns are temporarily unavailable. Please try again shortly.
+          </p>
+        )}
+        {loadState === "ok" && campaigns.length === 0 && (
+          <p className="mt-4 text-slate-500">No open bounties right now — check back soon.</p>
+        )}
+
+        {/* 动态任务卡片矩阵渲染（.map()） */}
+        <div className="mt-6 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {campaigns.map((t) => (
-            <div key={t.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div>
-                <h3 className="font-semibold">{t.title}</h3>
-                <p className="text-sm text-slate-500">{t.city}, {t.state} · {t.slotsRemaining} slots remaining</p>
+            <div key={t.id} className="flex flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              {/* 商户发布的去重素材视频（原生 video 标签） */}
+              {t.video_url ? (
+                <video
+                  controls
+                  preload="metadata"
+                  className="aspect-video w-full rounded-xl bg-slate-900"
+                  src={t.video_url}
+                />
+              ) : (
+                <div className="flex aspect-video w-full items-center justify-center rounded-xl bg-slate-100 text-sm text-slate-400">
+                  No preview available
+                </div>
+              )}
+
+              <h3 className="mt-3 font-semibold">{t.title}</h3>
+
+              {/* 美式文案字符串 caption_text */}
+              {t.caption_text && (
+                <p className="mt-1 text-sm leading-relaxed text-slate-600">{t.caption_text}</p>
+              )}
+
+              {/* 区域限制标记 + 托管分账佣金 */}
+              <div className="mt-3 flex items-center justify-between text-sm">
+                <span className="rounded-full bg-indigo-50 px-3 py-1 text-indigo-700">
+                  📍 {t.city}, {t.state}
+                </span>
+                <span className="font-bold text-emerald-600">${Number(t.payout).toFixed(2)} Payout</span>
               </div>
-              <div className="flex items-center gap-4">
-                <span className="font-bold text-emerald-600">${Number(t.payout).toFixed(2)}</span>
-                <button onClick={() => setActiveCampaignId(t.id)} className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700">Claim</button>
+
+              {/* 精确绑定硬件位置校验按钮：每卡传入 campaignId + workerId */}
+              <div className="mt-4">
+                <TaskButton campaignId={t.id} workerId={workerId} boundary={t.boundary} />
               </div>
             </div>
           ))}
         </div>
-
-        {active && (
-          <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <h3 className="font-semibold text-slate-800">Claim this task</h3>
-            <p className="mt-1 text-sm text-slate-500">Running hardware GPS verification before submission...</p>
-            <TaskButton campaignId={active.id} workerId="usr_current" boundary={active.boundary} />
-            <button onClick={() => setActiveCampaignId(null)} className="mt-4 text-sm text-slate-500 hover:text-slate-700">← Back to board</button>
-          </div>
-        )}
       </section>
 
       <section className="max-w-5xl mx-auto px-6 py-12">
