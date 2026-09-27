@@ -48,7 +48,7 @@
   "submission_id": "sub_a1b2c3d4",
   "campaign_id": "cmp_7f3a9b2c",
   "worker_id": "usr_5e6f7a8b",
-  "hardware_telemetry": {
+  "hardware_geoloc": {
     "latitude": 30.3322,
     "longitude": -81.6557,
     "detected_carrier": "T-Mobile US"
@@ -64,7 +64,7 @@
 ```
 
 字段说明：
-- `hardware_telemetry`：声明性遥测（lat/lng/运营商）。可被模拟，故最终判定以服务端回读为准。
+- `hardware_geoloc`：声明性遥测（lat/lng/运营商）。可被模拟，故最终判定以服务端回读为准。
 - `audit_metadata.published_video_id`：已发布视频原生 ID，供服务端回读。
 - `audit_metadata.verification_status`：核验状态机（见下）。
 
