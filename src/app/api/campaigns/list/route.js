@@ -26,12 +26,22 @@ try {
   console.warn("[campaigns/list] firebase-admin unavailable, using local mock");
 }
 
+// 凭证守卫：依赖已装但 FIREBASE_* 为占位/缺失时，仍降级 mock（避免用假凭证连真库）
+if (
+  !process.env.FIREBASE_PROJECT_ID ||
+  process.env.FIREBASE_PROJECT_ID === "f-crowdbang-test" ||
+  !process.env.FIREBASE_PRIVATE_KEY ||
+  String(process.env.FIREBASE_PRIVATE_KEY).includes("TEST_ONLY_PLACEHOLDER")
+) {
+  firebaseAvailable = false;
+}
+
 // 本地 mock 任务（字段结构与真实 campaigns 一致）
 const MOCK_CAMPAIGNS = [
   {
     id: "cmp_demo_001",
     title: "Unbox & Showcase — Home Gadget",
-    video_url: "/demo/unbox-home-gadget.mp4",
+    video_url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
     caption_text: "Unbox this compact home gadget and show how it fits your daily setup. Keep it honest and natural.",
     city: "Jacksonville",
     state: "FL",
@@ -42,7 +52,7 @@ const MOCK_CAMPAIGNS = [
   {
     id: "cmp_demo_002",
     title: "Budget Hack Reel — Kitchen Tool",
-    video_url: "/demo/kitchen-tool-hack.mp4",
+    video_url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
     caption_text: "Share a quick budget hack using this kitchen tool. Show a real result, not a scripted ad.",
     city: "Orlando",
     state: "FL",
@@ -53,7 +63,7 @@ const MOCK_CAMPAIGNS = [
   {
     id: "cmp_demo_003",
     title: "ASMR Setup Tour — Desk Light",
-    video_url: "/demo/desk-light-asmr.mp4",
+    video_url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4",
     caption_text: "Film a calm ASMR-style tour of your desk setup featuring this light. Natural light, no over-editing.",
     city: "Tampa",
     state: "FL",

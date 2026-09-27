@@ -28,6 +28,16 @@ try {
   console.warn("[campaigns/create] firebase-admin unavailable, using local mock");
 }
 
+// 凭证守卫：依赖已装但 FIREBASE_* 为占位/缺失时，仍降级 mock（避免用假凭证连真库）
+if (
+  !process.env.FIREBASE_PROJECT_ID ||
+  process.env.FIREBASE_PROJECT_ID === "f-crowdbang-test" ||
+  !process.env.FIREBASE_PRIVATE_KEY ||
+  String(process.env.FIREBASE_PRIVATE_KEY).includes("TEST_ONLY_PLACEHOLDER")
+) {
+  firebaseAvailable = false;
+}
+
 // 商户归属：生产从认证会话取当前商户 uid；此处以环境变量作服务端兜底示意
 function currentMerchantId() {
   return process.env.MERCHANT_ID ?? "mch_placeholder";

@@ -27,6 +27,16 @@ try {
   console.warn("[verify-and-payout] firebase-admin unavailable, using local mock");
 }
 
+// 凭证守卫：依赖已装但 FIREBASE_* 为占位/缺失时，仍降级 mock（避免用假凭证连真库）
+if (
+  !process.env.FIREBASE_PROJECT_ID ||
+  process.env.FIREBASE_PROJECT_ID === "f-crowdbang-test" ||
+  !process.env.FIREBASE_PRIVATE_KEY ||
+  String(process.env.FIREBASE_PRIVATE_KEY).includes("TEST_ONLY_PLACEHOLDER")
+) {
+  firebaseAvailable = false;
+}
+
 // 分账常量：佣金（worker）与平台纯技术服务费（官方利润账户）
 const PLATFORM_PAYOUT = 3.0;
 const PLATFORM_FEE = 1.0;
