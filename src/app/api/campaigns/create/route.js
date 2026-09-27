@@ -41,9 +41,9 @@ if (
   firebaseAvailable = false;
 }
 
-// 商户归属：生产从认证会话取当前商户 uid；此处以环境变量作服务端兜底示意
-function currentMerchantId() {
-  return process.env.MERCHANT_ID ?? "mch_placeholder";
+// 商户归属：优先取请求体中的 ownerId（前端鉴权会话 UID），env 作服务端兜底
+function currentMerchantId(bodyMerchantId) {
+  return bodyMerchantId || (process.env.MERCHANT_ID ?? "mch_placeholder");
 }
 
 // 托管参数校验：名额与佣金必须为正数
@@ -60,7 +60,7 @@ function validateEscrow(escrow) {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { title, video_url, caption_text, target_hashtags, geotargeting_config, escrow_summary } = body || {};
+    const { title, video_url, caption_text, target_hashtags, geotargeting_config, escrow_summary, merchantId } = body || {};
 
     if (!title) {
       return NextResponse.json({ error: "TITLE_REQUIRED" }, { status: 400 });
@@ -71,10 +71,10 @@ export async function POST(request) {
       return NextResponse.json({ error: escrowCheck.error }, { status: 400 });
     }
 
-    const merchantId = currentMerchantId();
+    const ownerId = currentMerchantId(merchantId);
     const campaign = {
       campaign_id: null,
-      owner_merchant_id: merchantId,
+      owner_merchant_id: ownerId,
       title,
       video_url: video_url ?? "",
       caption_text: caption_text ?? "",
@@ -101,7 +101,7 @@ export async function POST(request) {
     if (firebaseAvailable) {
       // 事务原子：校验商户余额 → 扣减 → 建单 → 写流水
       await db.runTransaction(async (tx) => {
-        const merchantRef = db.collection("merchants").doc(merchantId);
+        const merchantRef = db.collection("merchants").doc(ownerId);
         const mSnap = await tx.get(merchantRef);
         if (!mSnap.exists) throw new Error("MERCHANT_NOT_FOUND");
         const balance = mSnap.data()?.balance_usd || 0;
@@ -116,7 +116,7 @@ export async function POST(request) {
 
         const txnRef = db.collection("merchant_transactions").doc();
         tx.set(txnRef, {
-          merchant_id: merchantId,
+          merchant_id: ownerId,
           type: "debit",
           amount_usd: requiredFunds,
           payment_reference: ref.id,
@@ -126,17 +126,17 @@ export async function POST(request) {
       });
     } else {
       // 本地 mock：无钱包播种默认余额（代表已充值商户），校验/扣减 + 写大厅 + 流水
-      if (!mockMerchants.has(merchantId)) {
-        mockMerchants.set(merchantId, { balance_usd: 500, currency: "USD" });
+      if (!mockMerchants.has(ownerId)) {
+        mockMerchants.set(ownerId, { balance_usd: 500, currency: "USD" });
       }
-      const balance = mockMerchants.get(merchantId)?.balance_usd || 0;
+      const balance = mockMerchants.get(ownerId)?.balance_usd || 0;
       if (balance < requiredFunds) {
         return NextResponse.json(
           { error: "INSUFFICIENT_MERCHANT_BALANCE", balance_usd: balance, required: requiredFunds },
           { status: 402 }
         );
       }
-      mockMerchants.set(merchantId, { balance_usd: balance - requiredFunds, currency: "USD" });
+      mockMerchants.set(ownerId, { balance_usd: balance - requiredFunds, currency: "USD" });
 
       // 本地 mock：生成假 id，并写入共享 mockCampaigns 账本（list-shaped），
       // 使任务大厅 /api/campaigns/list 能立刻读到这条新建任务，实现 mock 全链路闭环。
@@ -162,7 +162,7 @@ export async function POST(request) {
         },
       });
       mockMerchantTransactions.set(`mt_local_${Date.now()}`, {
-        merchant_id: merchantId,
+        merchant_id: ownerId,
         type: "debit",
         amount_usd: requiredFunds,
         payment_reference: campaignId,
@@ -171,6 +171,7 @@ export async function POST(request) {
       });
     }
 
+    // [response contract] funds_held_usd + merchant_balance_after_usd
     return NextResponse.json(
       {
         campaignId,
@@ -178,7 +179,7 @@ export async function POST(request) {
         funds_held_usd: requiredFunds,
         merchant_balance_after_usd: firebaseAvailable
           ? undefined
-          : (mockMerchants.get(merchantId)?.balance_usd ?? 0),
+          : (mockMerchants.get(ownerId)?.balance_usd ?? 0),
         source: firebaseAvailable ? "firestore" : "mock",
       },
       { status: 201 }
