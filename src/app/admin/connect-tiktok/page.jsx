@@ -188,12 +188,11 @@ export default function ConnectTikTok() {
           <button
             onClick={connectTikTok}
             disabled={connectState === "submitting"}
-            className="w-full rounded-lg bg-black px-6 py-3 text-sm font-semibold text-white hover:bg-neutral-800 disabled:opacity-50"
+            className="w-full rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 px-6 py-4 text-base font-bold text-slate-900 shadow-md hover:from-amber-500 hover:to-yellow-600 disabled:opacity-50"
           >
-            {connectState === "submitting" ? "Connecting TikTok..." : "Connect TikTok Account"}
+            🔗 Link Your Official TikTok Account
           </button>
-          <p className="mt-1 text-xs text-white/0" aria-hidden> </p>
-          <p className="text-xs text-slate-500">连接 TikTok 账号</p>
+          <p className="mt-1 text-sm font-medium text-slate-600">绑定你的 TikTok 官方发布账号（一键）</p>
           {connectState === "success" && (
             <p className="mt-3 rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-700">
               ✅ {connectMsg}
