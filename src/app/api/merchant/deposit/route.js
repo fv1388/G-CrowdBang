@@ -46,11 +46,14 @@ if (
 }
 
 // PayPal 服务端凭证是否齐备（决定是否真正调用 PayPal 订单捕获校验）
+// 严格判定：必须是真实 Live 凭证——以 live_ 开头、且不是占位(your_)，Secret 同理。
+// 占位/缺失一律走本地 mock 确定性校验（仅开发者测试账号可用）；真实客户在生产环境
+// 因配置了真实 Live 凭证，必然走 PayPal Orders API 真校验，无法绕过支付。
 function paypalCredsReady() {
+  const cid = process.env.PAYPAL_PRODUCTION_CLIENT_ID || "";
+  const sec = process.env.PAYPAL_PRODUCTION_SECRET || "";
   return Boolean(
-    process.env.PAYPAL_PRODUCTION_CLIENT_ID &&
-    process.env.PAYPAL_PRODUCTION_CLIENT_ID.includes("live_") &&
-    process.env.PAYPAL_PRODUCTION_SECRET
+    cid.startsWith("live_") && !cid.includes("your_") && sec && !sec.includes("your_")
   );
 }
 
