@@ -44,6 +44,7 @@ if (
 const DEMO_SEED = [
   {
     id: "cmp_demo_001",
+    merchantId: "mch_demo",
     title: "Unbox & Showcase — Home Gadget",
     video_url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
     caption_text: "Unbox this compact home gadget and show how it fits your daily setup. Keep it honest and natural.",
@@ -55,6 +56,7 @@ const DEMO_SEED = [
   },
   {
     id: "cmp_demo_002",
+    merchantId: "mch_demo",
     title: "Budget Hack Reel — Kitchen Tool",
     video_url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
     caption_text: "Share a quick budget hack using this kitchen tool. Show a real result, not a scripted ad.",
@@ -66,6 +68,7 @@ const DEMO_SEED = [
   },
   {
     id: "cmp_demo_003",
+    merchantId: "mch_demo",
     title: "ASMR Setup Tour — Desk Light",
     video_url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4",
     caption_text: "Film a calm ASMR-style tour of your desk setup featuring this light. Natural light, no over-editing.",

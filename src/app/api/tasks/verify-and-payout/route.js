@@ -4,7 +4,8 @@
 // 合规声明：仅使用官方公开 API + 显式平台标识的标准 fetch，不含任何指纹伪造或规避检测逻辑。
 
 import { NextResponse } from "next/server";
-import { mockSubmissions, mockUsers, mockPlatform } from "../_mock-store";
+import { mockSubmissions, mockUsers, mockPlatform, mockCampaigns } from "../_mock-store";
+import { resolveTikTokBearer } from "../../tiktok/oauth/_resolve";
 
 // ---- Firebase Admin 单例（F-CrowdBang）；缺依赖时降级本地 mock，保证本地联调可运行 ----
 let db = null;
@@ -46,14 +47,15 @@ const PLATFORM_FEE = 1.0;
  * 使用平台官方公开接口 + 服务端标准凭证，显式声明平台标识，不伪装、不抹指纹。
  * 返回 { ok, public, ... }；ok=false 表示视频不可见（不存在/已删除/非公开）。
  */
-async function lookupPublishedVideo(publishedVideoId) {
+async function lookupPublishedVideo(publishedVideoId, accessToken) {
   // 本地 mock 模式（firebase-admin 未装）：返回确定性占位结果，仅用于本地闭环联调，非真实反查
   if (!firebaseAvailable) {
     return { ok: true, public: true, raw: { status: "active", visibility: "public", local_mock: true } };
   }
 
   // 真实环境：按实际对接的社交平台官方公开 API 填端点和凭据（服务端环境变量，勿前端暴露）。
-  const token = process.env.SOCIAL_PLATFORM_API_TOKEN;
+  // 优先使用已连接的 TikTok OAuth access_token 作合规 Bearer；否则回退到平台应用级 Token。
+  const token = accessToken || process.env.SOCIAL_PLATFORM_API_TOKEN;
   const url =
     `https://api.platform.example/v1/videos/${encodeURIComponent(publishedVideoId)}` +
     `?fields=id,status,visibility`;
@@ -76,7 +78,7 @@ async function lookupPublishedVideo(publishedVideoId) {
 
 export async function POST(request) {
   try {
-    const { submissionId } = await request.json();
+    const { submissionId, merchantId } = await request.json();
     if (!submissionId) {
       return NextResponse.json({ error: "SUBMISSION_ID_REQUIRED" }, { status: 400 });
     }
@@ -106,9 +108,26 @@ export async function POST(request) {
       );
     }
 
-    // 1) 官方公开 API 反查视频公开状态
+    // 【TikTok 令牌绑定】结算前须有该商户有效 OAuth access_token 作合规 Bearer，
+    // 否则无法执行官方公开状态反查 → 拒绝结算，防止无凭据放款。
+    const ownerMerchantId =
+      merchantId ||
+      submission.owner_merchant_id ||
+      mockCampaigns.get(submission.campaign_id)?.merchantId ||
+      process.env.MERCHANT_ID ||
+      "mch_placeholder";
+    const bearer = await resolveTikTokBearer(ownerMerchantId);
+    if (!bearer.ok) {
+      return NextResponse.json(
+        { error: "TIKTOK_TOKEN_REQUIRED", reason: bearer.reason, hint: "Merchant must connect a TikTok account before settlement." },
+        { status: 409 }
+      );
+    }
+
+    // 1) 官方公开 API 反查视频公开状态（使用 TikTok 合规 Bearer）
     const video = await lookupPublishedVideo(
-      submission.audit_metadata?.published_video_id
+      submission.audit_metadata?.published_video_id,
+      bearer.accessToken
     );
 
     if (!video.ok) {

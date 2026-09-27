@@ -5,6 +5,7 @@
 
 import { NextResponse } from "next/server";
 import { mockSubmissions } from "../_mock-store";
+import { resolveTikTokBearer } from "../../tiktok/oauth/_resolve";
 
 // ---- Firebase Admin 单例（F-CrowdBang）；缺依赖时降级本地 mock，保证本地联调可运行 ----
 let db = null;
@@ -39,7 +40,7 @@ if (
 
 export async function POST(request) {
   try {
-    const { submissionId, workerId, publishedVideoId } = await request.json();
+    const { submissionId, workerId, publishedVideoId, merchantId } = await request.json();
     if (!submissionId || !workerId || !publishedVideoId) {
       return NextResponse.json({ error: "MISSING_FIELDS" }, { status: 400 });
     }
@@ -73,9 +74,21 @@ export async function POST(request) {
       );
     }
 
+    // 【TikTok 令牌绑定】发布视频前必须存在该商户有效 OAuth access_token，
+    // 以便后续以标准 Bearer 合规调用官方发布 API；未连接/无有效令牌则拒绝。
+    const ownerMerchantId = merchantId || submission.owner_merchant_id;
+    const bearer = await resolveTikTokBearer(ownerMerchantId);
+    if (!bearer.ok) {
+      return NextResponse.json(
+        { error: "TIKTOK_TOKEN_REQUIRED", reason: bearer.reason, hint: "Merchant must connect a TikTok account first." },
+        { status: 409 }
+      );
+    }
+
     // 回填视频 ID
     const update = {
       "audit_metadata.published_video_id": publishedVideoId,
+      "audit_metadata.publish_bearer_token_id": bearer.tokenId,
       submitted_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -85,7 +98,10 @@ export async function POST(request) {
       Object.assign(mockSubmissions.get(submissionId), update);
     }
 
-    return NextResponse.json({ result: "updated", submissionId }, { status: 200 });
+    return NextResponse.json(
+      { result: "updated", submissionId, token_used: bearer.tokenId },
+      { status: 200 }
+    );
   } catch (err) {
     console.error("[publish-video]", err);
     return NextResponse.json({ error: "INTERNAL_ERROR" }, { status: 500 });

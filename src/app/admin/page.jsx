@@ -206,6 +206,7 @@ export default function MerchantConsole() {
         <div className="max-w-5xl mx-auto px-6 flex items-center gap-6 py-3">
           <span className="text-sm font-semibold text-indigo-600 border-b-2 border-indigo-600 pb-1">Merchant Console</span>
           <Link href="/admin/campaigns" className="text-sm font-medium text-slate-500 hover:text-slate-800">My Campaigns</Link>
+          <Link href="/admin/connect-tiktok" className="text-sm font-medium text-slate-500 hover:text-slate-800">Connect TikTok</Link>
           <Link href="/shop/tasks" className="text-sm font-medium text-slate-500 hover:text-slate-800">Task Hall</Link>
           <span className="ml-auto text-xs text-slate-400">UID: {merchantId}</span>
         </div>

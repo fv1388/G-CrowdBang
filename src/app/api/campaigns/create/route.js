@@ -147,6 +147,7 @@ export async function POST(request) {
       const escrow = campaign.escrow_summary || {};
       mockCampaigns.set(campaignId, {
         id: campaignId,
+        merchantId: ownerId,
         title: campaign.title,
         video_url: campaign.video_url,
         caption_text: campaign.caption_text,
