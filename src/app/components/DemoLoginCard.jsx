@@ -53,17 +53,26 @@ export default function DemoLoginCard({ role, backHref, introLabel }) {
     }
   };
 
-  // 生产环境：不暴露 demo 旁路，提示需接入真实账号体系
+  // 生产环境：不暴露 demo 旁路，提供统一登录入口 + 说明
   if (!isLocal) {
     return (
       <div className="mt-6 rounded-xl bg-slate-50 p-4 text-left text-sm">
-        <p className="font-medium text-slate-700">Production gate</p>
+        <p className="font-medium text-slate-700">Production gate / 登录入口</p>
         <p className="mt-1 text-xs text-slate-500">
           Demo sign-in is disabled outside localhost. Merchant/worker consoles open once real
           Firebase Auth is configured. Continue testing at <strong>http://localhost:3000</strong>.
         </p>
-        <Link href={backHref} className="mt-3 block text-xs text-indigo-500 hover:underline">
-          ← {backHref === "/" ? "Back to landing" : "Back"}
+        <p className="mt-1 text-xs text-slate-500">
+          线上禁用演示登录；接入真实 Firebase 认证后商家/接单控制台即可打开。当前请在本地 localhost:3000 测试。
+        </p>
+        <Link
+          href="/login"
+          className="mt-3 block rounded-lg bg-indigo-600 px-4 py-2 text-center text-xs font-semibold text-white hover:bg-indigo-700"
+        >
+          Go to Sign In / 前往登录 →
+        </Link>
+        <Link href={backHref} className="mt-2 block text-xs text-indigo-500 hover:underline">
+          ← {backHref === "/" ? "Back to landing / 返回首页" : "Back"}
         </Link>
       </div>
     );

@@ -44,6 +44,12 @@ export default function Home() {
             <span className="ml-2 text-xs font-normal text-slate-400">商户入口</span>
           </Link>
         </div>
+        <Link
+          href="/login"
+          className="mt-6 inline-block text-sm font-medium text-slate-400 underline-offset-4 hover:text-slate-200 hover:underline"
+        >
+          Sign in / 登录
+        </Link>
       </section>
 
       {/* Platform sections */}

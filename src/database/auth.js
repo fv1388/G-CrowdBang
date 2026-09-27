@@ -23,7 +23,7 @@ import { useEffect, useState } from "react";
 // ---------------------------------------------------------------------------
 
 // 判定是否配置了"真实可用的" Firebase 公共句柄（非占位）
-function firebaseConfigReady() {
+export function firebaseConfigReady() {
   const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
   const authDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
   const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
