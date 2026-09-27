@@ -24,8 +24,15 @@ export default function LoginPage() {
 
   const [email, setEmail] = useState("");
   const [pwd, setPwd] = useState("");
-  const [role, setRole] = useState("merchant"); // merchant | worker（mock 下生效；真实登录以 token claims 为准）
+  const [role, setRole] = useState("worker"); // merchant | worker（mock 下生效；真实登录以 token claims 为准）
   const [msg, setMsg] = useState("");
+
+  // 支持 ?mode=register 进入注册模式（mock 下注册即建立会话）
+  const [mode] = useState(() => {
+    if (typeof window === "undefined") return "signin";
+    const m = new URLSearchParams(window.location.search).get("mode");
+    return m === "register" ? "register" : "signin";
+  });
 
   const doLogin = async () => {
     if (!email || !pwd) {
@@ -50,8 +57,10 @@ export default function LoginPage() {
     <main className="min-h-screen bg-slate-50 grid place-items-center p-6">
       <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
         <p className="text-4xl">🔐</p>
-        <h1 className="mt-3 text-2xl font-bold text-slate-900">Sign In</h1>
-        <p className="text-sm text-slate-500">登录</p>
+        <h1 className="mt-3 text-2xl font-bold text-slate-900">
+          {mode === "register" ? "Create Account" : "Sign In"}
+        </h1>
+        <p className="text-sm text-slate-500">{mode === "register" ? "注册" : "登录"}</p>
         <p className="mt-1 text-xs text-slate-400">G-CrowdBang · unified account entry / 统一账户入口</p>
 
         {allowLogin ? (
@@ -95,9 +104,25 @@ export default function LoginPage() {
               onClick={doLogin}
               className="mt-4 w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700"
             >
-              Sign In / 登录
+              {mode === "register" ? "Sign Up / 注册" : "Sign In / 登录"}
             </button>
             {msg && <p className="mt-2 text-xs text-slate-500">{msg}</p>}
+
+            <div className="mt-3 flex items-center justify-center gap-1 text-xs">
+              {mode === "register" ? (
+                <>
+                  <span className="text-slate-500">Already have an account?</span>
+                  <span className="text-slate-400">已有账号？</span>
+                  <Link href="/login" className="font-medium text-indigo-600 hover:underline">Sign In · 登录</Link>
+                </>
+              ) : (
+                <>
+                  <span className="text-slate-500">No account yet?</span>
+                  <span className="text-slate-400">还没有账号？</span>
+                  <Link href="/login?mode=register" className="font-medium text-indigo-600 hover:underline">Sign Up · 注册</Link>
+                </>
+              )}
+            </div>
 
             {!configReady && (
               <p className="mt-3 rounded-lg bg-amber-50 border border-amber-200 p-3 text-left text-xs text-amber-700">

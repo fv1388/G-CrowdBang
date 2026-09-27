@@ -65,12 +65,20 @@ export default function DemoLoginCard({ role, backHref, introLabel }) {
         <p className="mt-1 text-xs text-slate-500">
           线上禁用演示登录；接入真实 Firebase 认证后商家/接单控制台即可打开。当前请在本地 localhost:3000 测试。
         </p>
-        <Link
-          href="/login"
-          className="mt-3 block rounded-lg bg-indigo-600 px-4 py-2 text-center text-xs font-semibold text-white hover:bg-indigo-700"
-        >
-          Go to Sign In / 前往登录 →
-        </Link>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <Link
+            href="/login"
+            className="block rounded-lg bg-indigo-600 px-4 py-2 text-center text-xs font-semibold text-white hover:bg-indigo-700"
+          >
+            Sign In · 登录
+          </Link>
+          <Link
+            href="/login?mode=register"
+            className="block rounded-lg border border-indigo-300 bg-white px-4 py-2 text-center text-xs font-semibold text-indigo-600 hover:bg-indigo-50"
+          >
+            Sign Up · 注册
+          </Link>
+        </div>
         <Link href={backHref} className="mt-2 block text-xs text-indigo-500 hover:underline">
           ← {backHref === "/" ? "Back to landing / 返回首页" : "Back"}
         </Link>
