@@ -94,7 +94,7 @@ export default function DemoLoginCard({ role, backHref, introLabel }) {
         onChange={(e) => setEmail(e.target.value)}
         placeholder={role === "merchant" ? "merchant@example.com" : "worker@example.com"}
         autoComplete="off"
-        className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 caret-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
       />
       <input
         type="password"
@@ -102,7 +102,7 @@ export default function DemoLoginCard({ role, backHref, introLabel }) {
         onChange={(e) => setPwd(e.target.value)}
         placeholder="password"
         autoComplete="new-password"
-        className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 caret-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
       />
       <button
         onClick={unlock}
