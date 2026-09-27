@@ -165,18 +165,22 @@ export default function ConnectTikTok() {
     <main className="min-h-screen bg-slate-50 text-slate-900">
       <nav className="border-b border-slate-200 bg-white">
         <div className="max-w-4xl mx-auto px-6 flex items-center gap-6 py-3">
-          <Link href="/admin" className="text-sm font-medium text-slate-500 hover:text-slate-800">Merchant Console</Link>
-          <Link href="/admin/campaigns" className="text-sm font-medium text-slate-500 hover:text-slate-800">My Campaigns</Link>
-          <span className="text-sm font-medium text-indigo-600 border-b-2 border-indigo-600 pb-1">Connect TikTok</span>
+          <Link href="/admin" className="text-sm font-medium text-slate-500 hover:text-slate-800">Merchant Console · 商户控制台</Link>
+          <Link href="/admin/campaigns" className="text-sm font-medium text-slate-500 hover:text-slate-800">My Campaigns · 我的任务</Link>
+          <span className="text-sm font-medium text-indigo-600 border-b-2 border-indigo-600 pb-1">Connect TikTok · 连接 TikTok</span>
           <span className="ml-auto text-xs text-slate-400">UID: {merchantId}</span>
         </div>
       </nav>
 
       <div className="max-w-4xl mx-auto px-6 py-12">
         <h1 className="text-3xl font-bold">Connect a TikTok Creator Account</h1>
+        <p className="text-sm text-slate-500">连接 TikTok 创作者账号</p>
         <p className="mt-2 text-slate-600">
           Authorize with TikTok so the platform can publish videos and audit their public status
           using a compliant, officially-issued access token.
+        </p>
+        <p className="text-sm text-slate-500">
+          授权 TikTok，平台即可发布视频，并通过合规的官方访问令牌审计其公开状态。
         </p>
 
         {/* Connect 按钮 */}
@@ -188,6 +192,8 @@ export default function ConnectTikTok() {
           >
             {connectState === "submitting" ? "Connecting TikTok..." : "Connect TikTok Account"}
           </button>
+          <p className="mt-1 text-xs text-white/0" aria-hidden> </p>
+          <p className="text-xs text-slate-500">连接 TikTok 账号</p>
           {connectState === "success" && (
             <p className="mt-3 rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-700">
               ✅ {connectMsg}
@@ -201,15 +207,24 @@ export default function ConnectTikTok() {
               ? "Opens the official TikTok authorization flow."
               : "Local demo mode — stores a demo token (no real TikTok app configured)."}
           </p>
+          <p className="mt-1 text-xs text-slate-500">
+            {process.env.NEXT_PUBLIC_TIKTOK_CLIENT_KEY
+              ? "将打开 TikTok 官方授权流程。"
+              : "本地演示模式 —— 存储演示令牌（未配置真实 TikTok 应用）。"}
+          </p>
         </div>
 
         {/* 已连接令牌 */}
         <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="font-semibold">Connected Tokens</h2>
+          <p className="text-xs text-slate-500">已连接令牌</p>
           {loadState === "loading" && <p className="mt-3 text-slate-500">Loading token ledger...</p>}
           {loadState === "error" && <p className="mt-3 text-sm text-amber-600">Token ledger temporarily unavailable.</p>}
           {loadState === "ok" && tokens.length === 0 && (
-            <p className="mt-3 text-sm text-slate-500">No connected TikTok accounts yet.</p>
+            <p className="mt-3 text-sm text-slate-500">
+              No connected TikTok accounts yet.
+              <span className="block text-xs text-slate-500">尚未连接任何 TikTok 账号。</span>
+            </p>
           )}
           <div className="mt-3 space-y-2">
             {tokens.map((t) => (
@@ -232,8 +247,12 @@ export default function ConnectTikTok() {
         {/* 令牌流转对账账本 */}
         <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="font-semibold">Token Reconciliation Ledger</h2>
+          <p className="text-xs text-slate-500">令牌流转对账账本</p>
           <p className="mt-1 text-xs text-slate-400">
             Every issuance / refresh is logged with a non-reversible fingerprint — token plaintext is never exposed.
+          </p>
+          <p className="mt-1 text-xs text-slate-500">
+            每次签发/刷新都以不可逆指纹记录 —— 绝不暴露令牌明文。
           </p>
           <div className="mt-3 space-y-2">
             {ledger.map((l) => (
@@ -248,7 +267,10 @@ export default function ConnectTikTok() {
               </div>
             ))}
             {loadState === "ok" && ledger.length === 0 && (
-              <p className="text-sm text-slate-500">No ledger events yet.</p>
+              <p className="text-sm text-slate-500">
+                No ledger events yet.
+                <span className="block text-xs text-slate-500">暂无账本事件。</span>
+              </p>
             )}
           </div>
         </div>

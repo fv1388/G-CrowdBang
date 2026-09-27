@@ -89,9 +89,11 @@ export default function MerchantCampaigns() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold">My Campaigns</h1>
+            <p className="text-sm text-slate-500">我的悬赏任务</p>
             <p className="mt-2 text-slate-600">
               Audit your bounty tasks — slots consumed, payout rate, and verification progress.
             </p>
+            <p className="text-sm text-slate-500">审计你的悬赏任务 —— 名额消耗、单次佣金与核验进度。</p>
           </div>
           <Link
             href="/admin/campaigns/new"
@@ -104,13 +106,16 @@ export default function MerchantCampaigns() {
         {/* 商户钱包：余额 + 充值 */}
         <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="font-semibold">Merchant Wallet</h2>
+          <p className="text-xs text-slate-500">商户钱包</p>
           <p className="mt-1 text-sm text-slate-500">
             Available escrow balance: <strong className="text-indigo-600">${Number(balance).toFixed(2)}</strong>
           </p>
+          <p className="text-xs text-slate-500">可用托管余额：${Number(balance).toFixed(2)}</p>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <div>
               <label className="block text-sm text-slate-600">Deposit amount (USD)</label>
+              <p className="text-xs text-slate-500">充值金额（美元）</p>
               <input
                 type="number"
                 min="1"
@@ -123,6 +128,7 @@ export default function MerchantCampaigns() {
             </div>
             <div>
               <label className="block text-sm text-slate-600">Payment order ID</label>
+              <p className="text-xs text-slate-500">支付订单号</p>
               <input
                 type="text"
                 value={paymentOrderId}
@@ -140,6 +146,7 @@ export default function MerchantCampaigns() {
           >
             {depositState === "submitting" ? "Verifying payment..." : "Top Up Wallet"}
           </button>
+          <p className="mt-1 text-xs text-indigo-600">充值钱包</p>
 
           {depositState === "success" && (
             <p className="mt-3 rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-700">
@@ -156,10 +163,14 @@ export default function MerchantCampaigns() {
         {loadState === "error" && (
           <p className="mt-8 rounded-xl bg-amber-50 border border-amber-200 p-4 text-sm text-amber-700">
             Campaigns are temporarily unavailable. Please try again shortly.
+            <span className="block text-xs text-amber-600">任务列表暂时不可用，请稍后重试。</span>
           </p>
         )}
         {loadState === "ok" && campaigns.length === 0 && (
-          <p className="mt-8 text-slate-500">No campaigns yet — create your first bounty.</p>
+          <p className="mt-8 text-slate-500">
+            No campaigns yet — create your first bounty.
+            <span className="block text-xs text-slate-500">还没有任务 —— 创建你的第一个悬赏吧。</span>
+          </p>
         )}
 
         <div className="mt-6 space-y-4">
@@ -199,6 +210,7 @@ export default function MerchantCampaigns() {
                     {c.id}
                   </span>
                 </div>
+                <p className="mt-1 text-xs text-slate-400">待核验 {audits.PENDING_AUDIT ?? 0} · 已核验 {audits.verified ?? 0}</p>
               </div>
             );
           })}
