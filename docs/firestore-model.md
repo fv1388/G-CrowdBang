@@ -154,3 +154,16 @@ A端商户先向账户钱包充值（如 $100），发布悬赏时从该余额�
 | payment_reference | string | 支付流水号 |
 | verified | boolean | 支付是否已验证 |
 | created_at | string | 时间 |
+
+## 集合八：deposit_history（商户充值对账流水表）
+
+由充值接口 `/api/merchant/deposit` 在支付校验通过后写入，status 固定为 COMPLETED。
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| deposit_id | string | 充值唯一 ID（系统自动生成） |
+| merchant_id | string | 商户 ID |
+| amount_usd | number | 充值金额（美元） |
+| payment_order_id | string | 第三方支付平台订单 ID |
+| status | string | 固定 "COMPLETED"（充值已完成） |
+| created_at | string | 充值时间戳 |

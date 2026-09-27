@@ -1,8 +1,11 @@
 // src/app/api/merchant/deposit/route.js
-// G-CrowdBang / F-CrowdBang · 商户资金账户充值接口（App Router Route Handler）
-// 职责：A端商户向账户钱包充值 → 服务端对接 PayPal 订单捕获回调验证充值真伪
-//       → 事务自增 merchants 集合的可用赏金余额。
-// 兼容策略：真实环境(PayPal 服务端凭证齐备)走 PayPal Orders API v2 校验；
+// G-CrowdBang / F-CrowdBang · 商户资金账户充值对账接口（App Router Route Handler）
+// 职责：A端商户向账户钱包充值 →
+//       1) 服务端对接合规第三方支付(如 PayPal Orders API v2)校验支付订单到账状态；
+//       2) 校验通过后在事务内原子自增 merchants 集合的可用赏金余额(FieldValue.increment)；
+//       3) 将本次充值作为一条对账流水写入 deposit_history 集合（status = "COMPLETED"）。
+// 入参：merchantId, depositAmount, paymentOrderId（paymentReference 为兼容别名）。
+// 兼容策略：真实环境(PayPal 服务端凭证齐备)走 PayPal 订单捕获校验；
 //           本地 mock 无凭证时接受确定性占位校验，便于本地联调。
 // 合规：仅做标准支付校验与余额入账，不涉及任何规避/伪造逻辑。
 
@@ -98,9 +101,15 @@ async function verifyPayment(paymentReference, amountUsd) {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { merchantId, amount, paymentReference, currency = "USD" } = body || {};
 
-    if (!merchantId || !amount || !paymentReference) {
+    // 输入契约：merchantId / depositAmount / paymentOrderId
+    // （paymentReference / amount 作为旧版兼容别名）
+    const merchantId = body?.merchantId;
+    const amount = body?.depositAmount ?? body?.amount;
+    const paymentOrderId = body?.paymentOrderId ?? body?.paymentReference;
+    const currency = body?.currency || "USD";
+
+    if (!merchantId || !paymentOrderId || amount === undefined || amount === null || amount === "") {
       return NextResponse.json({ error: "MISSING_FIELDS" }, { status: 400 });
     }
     if (!validateAmount(amount)) {
@@ -109,8 +118,8 @@ export async function POST(request) {
 
     const amountUsd = Number(amount);
 
-    // 支付真伪验证
-    const payment = await verifyPayment(paymentReference, amountUsd);
+    // 支付真伪验证（服务器端：PayPal 订单捕获状态 或 本地确定性占位）
+    const payment = await verifyPayment(paymentOrderId, amountUsd);
     if (!payment.ok) {
       return NextResponse.json(
         { error: "PAYMENT_NOT_VERIFIED", reason: payment.reason || "PAYMENT_NOT_COMPLETED" },
@@ -119,9 +128,10 @@ export async function POST(request) {
     }
 
     let newBalance;
+    let depositId = null;
 
     if (firebaseAvailable) {
-      // 事务原子：读取/创建商户 → 自增余额
+      // 事务原子：读取/创建商户 → 自增余额 → 写入充值对账流水(deposit_history)
       await db.runTransaction(async (tx) => {
         const ref = db.collection("merchants").doc(merchantId);
         const snap = await tx.get(ref);
@@ -144,26 +154,30 @@ export async function POST(request) {
           newBalance = current + amountUsd;
         }
 
-        // 记录充值流水（可追溯）
-        const logRef = db.collection("merchant_transactions").doc();
+        // 合规写入充值对账流水表（Deposit History）
+        // 字段：deposit_id(系统自动生成) / merchant_id / amount / payment_order_id / status / timestamp
+        const logRef = db.collection("deposit_history").doc();
+        depositId = logRef.id;
         tx.set(logRef, {
+          deposit_id: depositId,
           merchant_id: merchantId,
-          type: "deposit",
           amount_usd: amountUsd,
-          payment_reference: paymentReference,
-          verified: true,
-          created_at: new Date().toISOString(),
+          payment_order_id: paymentOrderId,
+          status: "COMPLETED", // 充值已完成
+          created_at: new Date().toISOString(), // timestamp
         });
       });
     } else {
-      // 本地 mock：自增共享商户账本
+      // 本地 mock：自增共享商户账本，并登记充值对账流水
       const prev = mockMerchants.get(merchantId)?.balance_usd || 0;
       mockMerchants.set(merchantId, { balance_usd: prev + amountUsd, currency });
       newBalance = prev + amountUsd;
+      depositId = `deposit_local_${Date.now()}`;
     }
 
     return NextResponse.json(
       {
+        depositId,
         merchantId,
         status: "confirmed",
         amount_usd: amountUsd,
@@ -171,7 +185,7 @@ export async function POST(request) {
         payment_verified: true,
         source: firebaseAvailable ? "firestore" : "mock",
       },
-      { status: 201 }
+      { status: 200 }
     );
   } catch (err) {
     console.error("[merchant/deposit]", err);

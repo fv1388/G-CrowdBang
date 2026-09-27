@@ -114,5 +114,14 @@ service cloud.firestore {
             && get(/databases/$(database)/documents/merchants/$(resource.data.merchant_id)).data.merchant_id == request.auth.uid);
       allow write: if isAdmin();
     }
+
+    // ---------- 集合八：deposit_history（商户充值对账流水表）----------
+    // 充值流水由服务端充值回调(admin)写入；商户仅能读取自己的充值记录，严禁前端篡改。
+    match /deposit_history/{depositId} {
+      allow read: if isAdmin()
+        || (isMerchant()
+            && get(/databases/$(database)/documents/merchants/$(resource.data.merchant_id)).data.merchant_id == request.auth.uid);
+      allow write: if isAdmin();
+    }
   }
 }
