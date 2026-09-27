@@ -1,9 +1,12 @@
 // src/app/api/campaigns/list/route.js
 // G-CrowdBang / F-CrowdBang · 开放任务动态列表接口（App Router Route Handler）
 // 职责：返回未满员的 open 任务（status=="open" 且 slots_used < total_slots），供接单大厅渲染。
-// 兼容策略：装有 firebase-admin 读 Firestore；未装时降级本地 mock 数据。
+// 兼容策略：装有 firebase-admin 且凭证真实时读 Firestore；否则读共享本地 mock 账本
+//           （mockCampaigns，与 create 接口共享，保证 mock 下 建单→大厅 真正闭环）。
+// mock 账本为空时播种 3 条演示任务，避免全新启动时大厅空置。
 
 import { NextResponse } from "next/server";
+import { mockCampaigns } from "../../tasks/_mock-store.js";
 
 let db = null;
 let firebaseAvailable = false;
@@ -36,8 +39,9 @@ if (
   firebaseAvailable = false;
 }
 
-// 本地 mock 任务（字段结构与真实 campaigns 一致）
-const MOCK_CAMPAIGNS = [
+// 演示任务播种数据（list-shaped：id/title/video_url/caption_text/city/state/payout/slotsRemaining/boundary，
+// 与 Firestore 映射一致，供 mock 账本初始化为空时填充）
+const DEMO_SEED = [
   {
     id: "cmp_demo_001",
     title: "Unbox & Showcase — Home Gadget",
@@ -73,10 +77,20 @@ const MOCK_CAMPAIGNS = [
   },
 ];
 
+// 首次访问且 mock 账本为空时，播种演示任务（仅 mock 模式；真实库由商户建单填充）
+function ensureMockSeed() {
+  if (mockCampaigns.size === 0) {
+    for (const c of DEMO_SEED) mockCampaigns.set(c.id, c);
+  }
+}
+
 export async function GET() {
   try {
     if (!firebaseAvailable) {
-      return NextResponse.json({ campaigns: MOCK_CAMPAIGNS, source: "mock" }, { status: 200 });
+      ensureMockSeed();
+      // 仅返回未满员任务
+      const campaigns = [...mockCampaigns.values()].filter((c) => Number(c.slotsRemaining) > 0);
+      return NextResponse.json({ campaigns, source: "mock" }, { status: 200 });
     }
 
     const snap = await db.collection("campaigns")

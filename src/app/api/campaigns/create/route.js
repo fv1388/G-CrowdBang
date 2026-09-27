@@ -5,6 +5,7 @@
 //           装上依赖并配置 .env.local 后自动切换真实写库）。
 
 import { NextResponse } from "next/server";
+import { mockCampaigns } from "../../tasks/_mock-store.js";
 
 let db = null;
 let firebaseAvailable = false;
@@ -98,9 +99,29 @@ export async function POST(request) {
       await ref.set(campaign);
       campaignId = ref.id;
     } else {
-      // 本地 mock：生成假 id，方便联调验证字段
+      // 本地 mock：生成假 id，并写入共享 mockCampaigns 账本（list-shaped），
+      // 使任务大厅 /api/campaigns/list 能立刻读到这条新建任务，实现 mock 全链路闭环。
       campaignId = `cmp_local_${Date.now()}`;
       campaign.campaign_id = campaignId;
+
+      const geo = campaign.geotargeting_config || {};
+      const escrow = campaign.escrow_summary || {};
+      mockCampaigns.set(campaignId, {
+        id: campaignId,
+        title: campaign.title,
+        video_url: campaign.video_url,
+        caption_text: campaign.caption_text,
+        city: geo.enabled ? geo.target_city : "Anywhere",
+        state: geo.enabled ? geo.target_state : "US",
+        payout: escrow.payout_rate ?? 3.0,
+        slotsRemaining: Math.max(0, (escrow.total_slots || 0) - (escrow.slots_used || 0)),
+        boundary: {
+          enabled: !!geo.enabled,
+          center: { latitude: geo.target_lat ?? 0, longitude: geo.target_lng ?? 0 },
+          radiusKm: geo.radius_km ?? 0,
+          maxAcceptableAccuracyMeters: 200,
+        },
+      });
     }
 
     return NextResponse.json({ campaignId, status: "open", source: firebaseAvailable ? "firestore" : "mock" }, { status: 201 });
