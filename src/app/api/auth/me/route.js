@@ -4,7 +4,7 @@
 //       返回当前登录用户的 uid / role / email（UID 烙印端到端验证）。
 
 import { NextResponse } from "next/server";
-import { requireAuth } from "../../../../database/auth";
+import { requireAuth } from "../../../../database/auth-server";
 
 export async function GET(request) {
   const auth = await requireAuth(request);

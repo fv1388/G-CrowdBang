@@ -1,120 +1,187 @@
 // src/database/auth.js
-// G-CrowdBang / F-CrowdBang · 用户/商户登录基本鉴权中心（服务端）
-// 职责：初始化 Firebase Admin Auth，提供统一的登录令牌(UID)校验与角色烙印工具，
-//       供后续所有受保护 API 在 Headers 里校验 `Authorization: Bearer <idToken>`。
-// 兼容策略：真实环境用 admin.auth().verifyIdToken 校验 Firebase ID Token；
-//           本地 mock（无真实服务账号凭证）解码 `mock.<uid>.<role>` 占位令牌，便于本地联调。
-// 合规：标准邮箱/密码登录网关与令牌校验，不涉及任何规避逻辑。
+// G-CrowdBang / F-CrowdBang · 客户端账户鉴权初始化中心（React + Firebase Auth Client SDK）
+// 职责：标准 Firebase 邮箱注册/登录封装 + AuthStateListener 状态监听 Hook。
+//       登录成功后安全获取 F-CrowdBang 分配的唯一 UID（即数据隔离墙所需的 merchantId/workerId），
+//       并通过账户类型(Merchant/Worker)向下游页面暴露。
+// 兼容策略：配置真实 NEXT_PUBLIC_FIREBASE_* 时走标准 firebase/auth；本地无真实项目时
+//           用确定性 mock 会话兜底（localStorage），保证本地联调不崩。
+// 合规：标准邮箱/密码登入与状态监听，不涉及任何规避逻辑。
 
-import { getApps, initializeApp, cert } from "firebase-admin/app";
-import { getAuth } from "firebase-admin/auth";
+"use client";
 
-// ---- 单一实例初始化（幂等）----
-let authInstance = null;
-let adminReady = false;
+import { initializeApp, getApps, getApp } from "firebase/app";
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  onAuthStateChanged,
+} from "firebase/auth";
+import { useEffect, useState } from "react";
 
-function ensureAdminAuth() {
-  if (authInstance) return authInstance;
+// ---------------------------------------------------------------------------
+// 1. Firebase App / Auth 单例初始化（幂等）
+// ---------------------------------------------------------------------------
 
-  const projectId = process.env.FIREBASE_PROJECT_ID;
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY;
+// 判定是否配置了"真实可用的" Firebase 公共句柄（非占位）
+function firebaseConfigReady() {
+  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+  const authDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
+  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 
-  // 凭证守卫：占位/缺失时进入 mock 模式（不做真实校验，只解码本地占位令牌）
-  const realCreds =
-    projectId &&
-    projectId !== "f-crowdbang-test" &&
-    clientEmail &&
-    privateKey &&
-    !String(privateKey).includes("TEST_ONLY_PLACEHOLDER");
+  return Boolean(
+    apiKey &&
+      !apiKey.includes("your_") &&
+      authDomain &&
+      !authDomain.includes("your_") &&
+      projectId
+  );
+}
 
-  if (!realCreds) {
-    adminReady = false;
-    authInstance = null;
+// 获取 Firebase App 单例
+function getAppInstance() {
+  if (getApps().length) return getApp();
+  return initializeApp({
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+    authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  });
+}
+
+// 获取 Auth 单例（惰性）
+function getAuthInstance() {
+  return getAuth(getAppInstance());
+}
+
+// 本地 mock 会话的存取键（无真实 Firebase 项目时用于本地联调）
+const MOCK_SESSION_KEY = "gb_mock_session";
+
+function readMockSession() {
+  try {
+    const raw = globalThis?.localStorage?.getItem(MOCK_SESSION_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
     return null;
   }
+}
 
-  if (!getApps().length) {
-    initializeApp({
-      credential: cert({
-        projectId,
-        clientEmail,
-        privateKey: privateKey.replace(/\\n/g, "\n"),
-      }),
+function writeMockSession(session) {
+  try {
+    globalThis?.localStorage?.setItem(MOCK_SESSION_KEY, JSON.stringify(session));
+  } catch {
+    /* 隐私模式等场景静默忽略 */
+  }
+}
+
+function clearMockSession() {
+  try {
+    globalThis?.localStorage?.removeItem(MOCK_SESSION_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+// 从 Firebase User 提取标准化会话对象（UID 烙印 + 账户类型）
+async function extractSession(user) {
+  // 读取 custom claims 中的 role（F-CrowdBang 数据隔离墙按 request.auth.token.role 判权）
+  let role = "worker";
+  try {
+    const idTokenResult = await user.getIdTokenResult();
+    role = idTokenResult.claims?.role || "worker";
+  } catch {
+    /* 兜底 worker */
+  }
+  return { uid: user.uid, role, email: user.email ?? null };
+}
+
+// ---------------------------------------------------------------------------
+// 2. 标准账户登入 / 注册封装
+// ---------------------------------------------------------------------------
+
+// 邮箱注册：返回 { uid, role, email }
+export async function signUpWithEmail(email, password, role = "worker") {
+  if (!firebaseConfigReady()) {
+    // 本地 mock：写入确定性会话，供本地联调（非真实注册）
+    const uid = `uid_${email.split("@")[0]}`;
+    const session = { uid, role, email, tokenType: "mock" };
+    writeMockSession(session);
+    return session;
+  }
+
+  const userCredential = await createUserWithEmailAndPassword(
+    getAuthInstance(),
+    email,
+    password
+  );
+  return extractSession(userCredential.user);
+}
+
+// 邮箱登录：返回 { uid, role, email }
+export async function signInWithEmail(email, password) {
+  if (!firebaseConfigReady()) {
+    // 本地 mock：与 signUp 一致的确定性会话
+    const uid = `uid_${email.split("@")[0]}`;
+    const session = { uid, role: "worker", email, tokenType: "mock" };
+    writeMockSession(session);
+    return session;
+  }
+
+  const userCredential = await signInWithEmailAndPassword(
+    getAuthInstance(),
+    email,
+    password
+  );
+  return extractSession(userCredential.user);
+}
+
+// 登出（可选扩展）
+export async function signOut() {
+  if (firebaseConfigReady()) {
+    await getAuthInstance().signOut();
+  } else {
+    clearMockSession();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 3. 标准 AuthStateListener 状态监听 Hook
+// ---------------------------------------------------------------------------
+
+/**
+ * useAuthSession
+ * 实时监听当前账户活跃状态。
+ * 返回：{ session, loading }
+ *  - session: 登录时为 { uid, role, email }，未登录为 null（用于身份访问卡点）。
+ *  - loading: 初始监听中为 true。
+ */
+export function useAuthSession() {
+  const [session, setSession] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let unsub = null;
+
+    if (!firebaseConfigReady()) {
+      // 本地 mock：读取确定性会话
+      setSession(readMockSession());
+      setLoading(false);
+      return;
+    }
+
+    const auth = getAuthInstance();
+    unsub = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        const s = await extractSession(user);
+        setSession(s);
+      } else {
+        setSession(null);
+      }
+      setLoading(false);
     });
-  }
-  authInstance = getAuth();
-  adminReady = true;
-  return authInstance;
-}
 
-// ---- 从请求 Headers 提取 Bearer 令牌 ----
-export function extractBearerToken(request) {
-  const header = request.headers.get("authorization") || "";
-  const match = header.match(/^Bearer\s+(.+)$/i);
-  return match ? match[1].trim() : null;
-}
+    return () => {
+      if (unsub) unsub();
+    };
+  }, []);
 
-// ---- 令牌校验：真实 admin 校验 或 本地 mock 解码 ----
-// 返回 { ok, uid, role, email, tokenType }
-export async function verifyToken(token) {
-  if (!token) return { ok: false, error: "NO_TOKEN" };
-
-  const admin = ensureAdminAuth();
-  if (admin && adminReady) {
-    try {
-      const decoded = await admin.verifyIdToken(token);
-      return {
-        ok: true,
-        uid: decoded.uid,
-        role: decoded.role || decoded.role_from_claim || "worker",
-        email: decoded.email || null,
-        tokenType: "firebase",
-      };
-    } catch (e) {
-      return { ok: false, error: "INVALID_TOKEN", detail: e.code || e.message };
-    }
-  }
-
-  // 本地 mock 解码：`mock.<uid>.<role>` 占位令牌（仅供本地联调）
-  if (token.startsWith("mock.")) {
-    const parts = token.split(".");
-    if (parts.length >= 2) {
-      return {
-        ok: true,
-        uid: parts[1],
-        role: parts[2] || "worker",
-        email: null,
-        tokenType: "mock",
-      };
-    }
-  }
-  return { ok: false, error: "INVALID_TOKEN" };
-}
-
-// ---- 请求鉴权封装：读取 Header 令牌并校验 ----
-// 返回 { ok, uid, role, error }，调用方据此放行或返回 401。
-export async function requireAuth(request, { allowedRoles } = {}) {
-  const token = extractBearerToken(request);
-  if (!token) return { ok: false, error: "UNAUTHORIZED" };
-
-  const result = await verifyToken(token);
-  if (!result.ok) return { ok: false, error: result.error || "UNAUTHORIZED" };
-
-  if (allowedRoles && allowedRoles.length && !allowedRoles.includes(result.role)) {
-    return { ok: false, error: "FORBIDDEN", role: result.role };
-  }
-
-  return result; // { ok, uid, role, email }
-}
-
-// ---- 是否可用真实 Admin Auth（供调用方决定走真实还是 mock）----
-export function isAuthReady() {
-  ensureAdminAuth();
-  return adminReady;
-}
-
-// ---- 生成本地 mock 占位令牌（仅登录网关在无真实 Firebase 项目时返回，供本地联调）----
-export function issueMockToken(uid, role = "worker") {
-  return `mock.${uid}.${role}`;
+  return { session, loading };
 }

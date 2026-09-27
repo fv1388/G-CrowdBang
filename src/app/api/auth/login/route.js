@@ -7,7 +7,7 @@
 // 合规：标准密码登录，不涉及任何规避逻辑。
 
 import { NextResponse } from "next/server";
-import { issueMockToken, isAuthReady } from "../../../../database/auth";
+import { issueMockToken, isAuthReady } from "../../../../database/auth-server";
 
 const IDENTITY_TOOLKIT = "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword";
 
