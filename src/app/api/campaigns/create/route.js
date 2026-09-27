@@ -5,14 +5,16 @@
 //           装上依赖并配置 .env.local 后自动切换真实写库）。
 
 import { NextResponse } from "next/server";
-import { mockCampaigns } from "../../tasks/_mock-store.js";
+import { mockCampaigns, mockMerchants, mockMerchantTransactions } from "../../tasks/_mock-store.js";
 
 let db = null;
 let firebaseAvailable = false;
+let FieldValue = null;
 
 try {
   const { initializeApp, cert, getApps } = await import("firebase-admin/app");
-  const { getFirestore } = await import("firebase-admin/firestore");
+  const fstore = await import("firebase-admin/firestore");
+  FieldValue = fstore.FieldValue;
   if (!getApps().length) {
     initializeApp({
       credential: cert({
@@ -22,7 +24,7 @@ try {
       }),
     });
   }
-  db = getFirestore();
+  db = fstore.getFirestore();
   firebaseAvailable = true;
 } catch (e) {
   // firebase-admin 未安装：降级到本地 mock，保证本地联调可运行
@@ -92,13 +94,50 @@ export async function POST(request) {
     };
 
     let campaignId;
+    const requiredFunds =
+      escrowCheck.escrow.total_slots *
+      (escrowCheck.escrow.payout_rate + escrowCheck.escrow.platform_fee);
 
     if (firebaseAvailable) {
-      const ref = db.collection("campaigns").doc();
-      campaign.campaign_id = ref.id;
-      await ref.set(campaign);
-      campaignId = ref.id;
+      // 事务原子：校验商户余额 → 扣减 → 建单 → 写流水
+      await db.runTransaction(async (tx) => {
+        const merchantRef = db.collection("merchants").doc(merchantId);
+        const mSnap = await tx.get(merchantRef);
+        if (!mSnap.exists) throw new Error("MERCHANT_NOT_FOUND");
+        const balance = mSnap.data()?.balance_usd || 0;
+        if (balance < requiredFunds) throw new Error("INSUFFICIENT_MERCHANT_BALANCE");
+
+        tx.update(merchantRef, { balance_usd: FieldValue.increment(-requiredFunds) });
+
+        const ref = db.collection("campaigns").doc();
+        campaign.campaign_id = ref.id;
+        campaignId = ref.id;
+        tx.set(ref, campaign);
+
+        const txnRef = db.collection("merchant_transactions").doc();
+        tx.set(txnRef, {
+          merchant_id: merchantId,
+          type: "debit",
+          amount_usd: requiredFunds,
+          payment_reference: ref.id,
+          verified: true,
+          created_at: new Date().toISOString(),
+        });
+      });
     } else {
+      // 本地 mock：无钱包播种默认余额（代表已充值商户），校验/扣减 + 写大厅 + 流水
+      if (!mockMerchants.has(merchantId)) {
+        mockMerchants.set(merchantId, { balance_usd: 500, currency: "USD" });
+      }
+      const balance = mockMerchants.get(merchantId)?.balance_usd || 0;
+      if (balance < requiredFunds) {
+        return NextResponse.json(
+          { error: "INSUFFICIENT_MERCHANT_BALANCE", balance_usd: balance, required: requiredFunds },
+          { status: 402 }
+        );
+      }
+      mockMerchants.set(merchantId, { balance_usd: balance - requiredFunds, currency: "USD" });
+
       // 本地 mock：生成假 id，并写入共享 mockCampaigns 账本（list-shaped），
       // 使任务大厅 /api/campaigns/list 能立刻读到这条新建任务，实现 mock 全链路闭环。
       campaignId = `cmp_local_${Date.now()}`;
@@ -122,10 +161,35 @@ export async function POST(request) {
           maxAcceptableAccuracyMeters: 200,
         },
       });
+      mockMerchantTransactions.set(`mt_local_${Date.now()}`, {
+        merchant_id: merchantId,
+        type: "debit",
+        amount_usd: requiredFunds,
+        payment_reference: campaignId,
+        verified: true,
+        created_at: new Date().toISOString(),
+      });
     }
 
-    return NextResponse.json({ campaignId, status: "open", source: firebaseAvailable ? "firestore" : "mock" }, { status: 201 });
+    return NextResponse.json(
+      {
+        campaignId,
+        status: "open",
+        funds_held_usd: requiredFunds,
+        merchant_balance_after_usd: firebaseAvailable
+          ? undefined
+          : (mockMerchants.get(merchantId)?.balance_usd ?? 0),
+        source: firebaseAvailable ? "firestore" : "mock",
+      },
+      { status: 201 }
+    );
   } catch (err) {
+    if (err?.message === "INSUFFICIENT_MERCHANT_BALANCE") {
+      return NextResponse.json({ error: "INSUFFICIENT_MERCHANT_BALANCE" }, { status: 402 });
+    }
+    if (err?.message === "MERCHANT_NOT_FOUND") {
+      return NextResponse.json({ error: "MERCHANT_NOT_FOUND", hint: "deposit first" }, { status: 404 });
+    }
     console.error("[campaigns/create]", err);
     return NextResponse.json({ error: "INTERNAL_ERROR" }, { status: 500 });
   }

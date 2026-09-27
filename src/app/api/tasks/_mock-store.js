@@ -15,3 +15,4 @@ export const mockPlatform = { service_fee_balance_usd: 0 };
 export const mockCampaigns = new Map();
 export const mockPayoutRequests = new Map();
 export const mockMerchants = new Map();
+export const mockMerchantTransactions = new Map();

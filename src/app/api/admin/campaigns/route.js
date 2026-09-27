@@ -4,13 +4,16 @@
 // 说明：仅做合规入库；规则层已锁 owner_merchant_id == auth.uid，服务端二次校验。
 
 import { NextResponse } from "next/server";
+import { mockMerchants, mockCampaigns, mockMerchantTransactions } from "../../tasks/_mock-store";
 
 // ---- Firebase Admin 单例（F-CrowdBang）；缺依赖时降级本地 mock，保证本地联调可运行 ----
 let db = null;
 let firebaseAvailable = false;
+let FieldValue = null;
 try {
   const { initializeApp, cert, getApps } = await import("firebase-admin/app");
-  const { getFirestore } = await import("firebase-admin/firestore");
+  const fstore = await import("firebase-admin/firestore");
+  FieldValue = fstore.FieldValue;
   if (!getApps().length) {
     initializeApp({
       credential: cert({
@@ -20,7 +23,7 @@ try {
       }),
     });
   }
-  db = getFirestore();
+  db = fstore.getFirestore();
   firebaseAvailable = true;
 } catch (e) {
   console.warn("[admin/campaigns] firebase-admin unavailable, using local mock");
@@ -112,6 +115,14 @@ export async function POST(request) {
 
     const merchantId = currentMerchantId();
 
+    // 托管参数
+    const totalSlots = Number(escrow_summary?.total_slots) || 0;
+    const payoutRate = Number(escrow_summary?.payout_rate) || 0;
+    const platformFee = Number(escrow_summary?.platform_fee) || 0;
+    if (!(totalSlots > 0)) {
+      return NextResponse.json({ error: "INVALID_ESCROW" }, { status: 400 });
+    }
+
     const campaign = {
       campaign_id: null, // 落库时生成
       owner_merchant_id: merchantId,
@@ -128,22 +139,118 @@ export async function POST(request) {
         radius_km: geotargeting_config?.radius_km ?? 0,
       },
       escrow_summary: {
-        total_slots: Number(escrow_summary?.total_slots) || 0,
+        total_slots: totalSlots,
         slots_used: 0,
-        payout_rate: Number(escrow_summary?.payout_rate) || 0,
-        platform_fee: Number(escrow_summary?.platform_fee) || 0,
+        payout_rate: payoutRate,
+        platform_fee: platformFee,
       },
       status: "open",
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
 
-    const ref = db.collection("campaigns").doc();
-    campaign.campaign_id = ref.id;
-    await ref.set(campaign);
+    // 本次发单需冻结资金：名额 × (佣金 + 平台服务费)
+    const requiredFunds = totalSlots * (payoutRate + platformFee);
 
-    return NextResponse.json({ campaignId: ref.id, status: "open" }, { status: 201 });
+    let campaignId;
+
+    if (firebaseAvailable) {
+      // 事务原子：校验商户余额 → 扣减余额 → 建单 → 写流水，防止并发超发
+      await db.runTransaction(async (tx) => {
+        const merchantRef = db.collection("merchants").doc(merchantId);
+        const mSnap = await tx.get(merchantRef);
+        if (!mSnap.exists) {
+          throw new Error("MERCHANT_NOT_FOUND");
+        }
+        const balance = mSnap.data()?.balance_usd || 0;
+        if (balance < requiredFunds) {
+          throw new Error("INSUFFICIENT_MERCHANT_BALANCE");
+        }
+
+        tx.update(merchantRef, {
+          balance_usd: FieldValue.increment(-requiredFunds),
+          updated_at: new Date().toISOString(),
+        });
+
+        const ref = db.collection("campaigns").doc();
+        campaign.campaign_id = ref.id;
+        campaignId = ref.id;
+        tx.set(ref, campaign);
+
+        const txnRef = db.collection("merchant_transactions").doc();
+        tx.set(txnRef, {
+          merchant_id: merchantId,
+          type: "debit",
+          amount_usd: requiredFunds,
+          payment_reference: ref.id,
+          verified: true,
+          created_at: new Date().toISOString(),
+        });
+      });
+    } else {
+      // 本地 mock：校验/扣减共享商户账本 + 写入 mockCampaigns（list-shaped）使大厅可见
+      // 无钱包时播种默认余额，代表已充值商户，便于本地联调演示扣款逻辑
+      if (!mockMerchants.has(merchantId)) {
+        mockMerchants.set(merchantId, { balance_usd: 500, currency: "USD" });
+      }
+      const balance = mockMerchants.get(merchantId)?.balance_usd || 0;
+      if (balance < requiredFunds) {
+        return NextResponse.json(
+          { error: "INSUFFICIENT_MERCHANT_BALANCE", balance_usd: balance, required: requiredFunds },
+          { status: 402 }
+        );
+      }
+      mockMerchants.set(merchantId, { balance_usd: balance - requiredFunds, currency: "USD" });
+
+      campaignId = `cmp_local_${Date.now()}`;
+      campaign.campaign_id = campaignId;
+      const geo = campaign.geotargeting_config;
+      const escrow = campaign.escrow_summary;
+      mockCampaigns.set(campaignId, {
+        id: campaignId,
+        title: campaign.title,
+        video_url: campaign.video_url,
+        caption_text: campaign.caption_text,
+        city: geo.enabled ? geo.target_city : "Anywhere",
+        state: geo.enabled ? geo.target_state : "US",
+        payout: escrow.payout_rate ?? 3.0,
+        slotsRemaining: totalSlots,
+        boundary: {
+          enabled: !!geo.enabled,
+          center: { latitude: geo.target_lat ?? 0, longitude: geo.target_lng ?? 0 },
+          radiusKm: geo.radius_km ?? 0,
+          maxAcceptableAccuracyMeters: 200,
+        },
+      });
+      mockMerchantTransactions.set(`mt_local_${Date.now()}`, {
+        merchant_id: merchantId,
+        type: "debit",
+        amount_usd: requiredFunds,
+        payment_reference: campaignId,
+        verified: true,
+        created_at: new Date().toISOString(),
+      });
+    }
+
+    return NextResponse.json(
+      {
+        campaignId,
+        status: "open",
+        funds_held_usd: requiredFunds,
+        merchant_balance_after_usd: firebaseAvailable
+          ? undefined
+          : (mockMerchants.get(merchantId)?.balance_usd ?? 0),
+        source: firebaseAvailable ? "firestore" : "mock",
+      },
+      { status: 201 }
+    );
   } catch (err) {
+    if (err?.message === "INSUFFICIENT_MERCHANT_BALANCE") {
+      return NextResponse.json({ error: "INSUFFICIENT_MERCHANT_BALANCE" }, { status: 402 });
+    }
+    if (err?.message === "MERCHANT_NOT_FOUND") {
+      return NextResponse.json({ error: "MERCHANT_NOT_FOUND", hint: "deposit first" }, { status: 404 });
+    }
     console.error("[admin/campaigns]", err);
     return NextResponse.json({ error: "INTERNAL_ERROR" }, { status: 500 });
   }
