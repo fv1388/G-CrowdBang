@@ -221,6 +221,9 @@ export default function TaskHallPage() {
               <p className="text-sm text-slate-500">Your wallet (withdrawable balance)</p>
               <p className="mt-1 text-3xl font-bold text-emerald-600">${Number(balance).toFixed(2)}</p>
               <p className="mt-1 text-xs text-slate-400">$3.00 per verified task, paid to your withdrawable balance.</p>
+              <Link href="/workers" className="mt-3 inline-block text-sm font-medium text-indigo-600 hover:underline">
+                View full earnings &amp; withdrawal →
+              </Link>
             </div>
 
             <div className="w-full lg:max-w-md">
