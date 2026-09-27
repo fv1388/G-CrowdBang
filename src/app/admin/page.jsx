@@ -10,18 +10,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useAuthSession, signUpWithEmail } from "@/database/auth";
+import { useAuthSession } from "@/database/auth";
+import DemoLoginCard from "@/app/components/DemoLoginCard";
 
 export default function MerchantConsole() {
   const { session, loading } = useAuthSession();
   // 角色大小写不敏感判定（auth 层实际下发小写 merchant，'MERCHANT' 亦兼容）
   const isMerchant = !loading && session?.role?.toUpperCase() === "MERCHANT";
   const merchantId = session?.uid ?? null;
-
-  // ---- 本地 demo 商户登录（仅用于本地联调解锁卡点；生产由登录页完成）----
-  const [email, setEmail] = useState("");
-  const [pwd, setPwd] = useState("");
-  const [authMsg, setAuthMsg] = useState("");
 
   // ---- PayPal 充值 ----
   const [topUpAmount, setTopUpAmount] = useState("");
@@ -38,21 +34,6 @@ export default function MerchantConsole() {
   const [publishState, setPublishState] = useState("idle");
   const [publishMsg, setPublishMsg] = useState("");
   const [lastCampaignId, setLastCampaignId] = useState(null);
-
-  // 本地 demo：以 role='merchant' 注册会话（auth.js 支持 role 入参）
-  const demoMerchantSignUp = async () => {
-    if (!email || !pwd) {
-      setAuthMsg("Enter email + password.");
-      return;
-    }
-    try {
-      const s = await signUpWithEmail(email, pwd, "merchant");
-      setAuthMsg(`Signed in as merchant (${s.uid}) — local demo session.`);
-    } catch (e) {
-      console.error("[admin] demo sign-in failed", e);
-      setAuthMsg("Sign-in failed. Please try again.");
-    }
-  };
 
   // 商户美元账户充值 → POST /api/merchant/deposit
   // 说明：生产环境应先由服务端创建 PayPal 订单并返回 orderId，再连同金额提交校验；
@@ -167,33 +148,8 @@ export default function MerchantConsole() {
             Data channels are physically blocked for non-merchant roles.
           </p>
 
-          {/* 本地 demo 商户登录（解锁卡点用；生产走独立登录页） */}
-          <div className="mt-6 rounded-xl bg-slate-50 p-4 text-left">
-            <p className="text-xs font-medium text-slate-500">Local demo — sign in as merchant</p>
-            <input
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="merchant@example.com"
-              className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-            <input
-              type="password"
-              value={pwd}
-              onChange={(e) => setPwd(e.target.value)}
-              placeholder="password"
-              className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-            <button
-              onClick={demoMerchantSignUp}
-              className="mt-3 w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
-            >
-              Unlock Merchant Console (demo)
-            </button>
-            {authMsg && <p className="mt-2 text-xs text-slate-500">{authMsg}</p>}
-            <Link href="/" className="mt-3 block text-center text-xs text-indigo-500 hover:underline">
-              ← Back to landing
-            </Link>
-          </div>
+          {/* 本地开发者演示登录（仅 localhost 渲染；生产线上隐藏，防客户旁路自注册） */}
+          <DemoLoginCard role="merchant" backHref="/" />
         </div>
       </main>
     );

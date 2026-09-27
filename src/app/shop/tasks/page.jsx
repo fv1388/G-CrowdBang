@@ -10,7 +10,8 @@
 import TaskButton from "@/shop/components/TaskButton";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useAuthSession, signUpWithEmail } from "@/database/auth";
+import { useAuthSession } from "@/database/auth";
+import DemoLoginCard from "@/app/components/DemoLoginCard";
 
 export default function TaskHallPage() {
   const { session, loading } = useAuthSession();
@@ -24,11 +25,6 @@ export default function TaskHallPage() {
 
   // 收益余额（来自 /api/workers/my-submissions）
   const [balance, setBalance] = useState(0);
-
-  // 本地 demo 登录（解锁卡点用；生产走独立登录页）
-  const [email, setEmail] = useState("");
-  const [pwd, setPwd] = useState("");
-  const [authMsg, setAuthMsg] = useState("");
 
   // 提现表单状态
   const [amount, setAmount] = useState("");
@@ -60,21 +56,6 @@ export default function TaskHallPage() {
     })();
     return () => { cancelled = true; };
   }, []);
-
-  // 本地 demo：以 role='worker' 注册会话解锁卡点
-  const demoWorkerSignUp = async () => {
-    if (!email || !pwd) {
-      setAuthMsg("Enter email + password.");
-      return;
-    }
-    try {
-      const s = await signUpWithEmail(email, pwd, "worker");
-      setAuthMsg(`Signed in as worker (${s.uid}) — local demo session.`);
-    } catch (e) {
-      console.error("[task-hall] demo sign-in failed", e);
-      setAuthMsg("Sign-in failed. Please try again.");
-    }
-  };
 
   // 提交提现申请 → POST /api/payouts/request（携带真实 workerId）
   const requestWithdrawal = async () => {
@@ -162,33 +143,8 @@ export default function TaskHallPage() {
             Task claims are blocked for unauthenticated visitors.
           </p>
 
-          {/* 本地 demo 登录（解锁卡点用） */}
-          <div className="mt-6 rounded-xl bg-slate-50 p-4 text-left">
-            <p className="text-xs font-medium text-slate-500">Local demo — sign in as worker</p>
-            <input
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="worker@example.com"
-              className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-            <input
-              type="password"
-              value={pwd}
-              onChange={(e) => setPwd(e.target.value)}
-              placeholder="password"
-              className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
-            <button
-              onClick={demoWorkerSignUp}
-              className="mt-3 w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
-            >
-              Unlock Task Hall (demo)
-            </button>
-            {authMsg && <p className="mt-2 text-xs text-slate-500">{authMsg}</p>}
-            <Link href="/" className="mt-3 block text-center text-xs text-indigo-500 hover:underline">
-              ← Back to landing
-            </Link>
-          </div>
+          {/* 本地开发者演示登录（仅 localhost 渲染；生产线上隐藏，防客户旁路自注册） */}
+          <DemoLoginCard role="worker" backHref="/" />
         </div>
       </main>
     );

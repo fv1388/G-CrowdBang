@@ -11,7 +11,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useAuthSession, signUpWithEmail } from "@/database/auth";
+import { useAuthSession } from "@/database/auth";
+import DemoLoginCard from "@/app/components/DemoLoginCard";
 
 const SCOPES = ["video.publish", "user.info.basic"].join(",");
 
@@ -19,11 +20,6 @@ export default function ConnectTikTok() {
   const { session, loading } = useAuthSession();
   const isMerchant = !loading && session?.role?.toUpperCase() === "MERCHANT";
   const merchantId = session?.uid ?? null;
-
-  // demo 登录（解锁卡点用）
-  const [email, setEmail] = useState("");
-  const [pwd, setPwd] = useState("");
-  const [authMsg, setAuthMsg] = useState("");
 
   // 连接状态
   const [connectState, setConnectState] = useState("idle"); // idle|submitting|success|error
@@ -137,17 +133,6 @@ export default function ConnectTikTok() {
     refreshLedger(merchantId);
   };
 
-  const demoMerchantSignUp = async () => {
-    if (!email || !pwd) { setAuthMsg("Enter email + password."); return; }
-    try {
-      const s = await signUpWithEmail(email, pwd, "merchant");
-      setAuthMsg(`Signed in as merchant (${s.uid}) — local demo session.`);
-    } catch (e) {
-      console.error("[connect-tiktok] demo sign-in failed", e);
-      setAuthMsg("Sign-in failed.");
-    }
-  };
-
   // ---- 挂载中 ----
   if (loading) {
     return (
@@ -168,19 +153,8 @@ export default function ConnectTikTok() {
             This is the Merchant Console. Your session role is{" "}
             <strong>{session?.role ?? "none"}</strong> — merchant access is required.
           </p>
-          <div className="mt-6 rounded-xl bg-slate-50 p-4 text-left">
-            <p className="text-xs font-medium text-slate-500">Local demo — sign in as merchant</p>
-            <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="merchant@example.com"
-              className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-            <input type="password" value={pwd} onChange={(e) => setPwd(e.target.value)} placeholder="password"
-              className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-            <button onClick={demoMerchantSignUp}
-              className="mt-3 w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
-              Unlock Merchant Console (demo)
-            </button>
-            {authMsg && <p className="mt-2 text-xs text-slate-500">{authMsg}</p>}
-            <Link href="/admin" className="mt-3 block text-center text-xs text-indigo-500 hover:underline">← Back to console</Link>
-          </div>
+          {/* 本地开发者演示登录（仅 localhost 渲染；生产线上隐藏，防客户旁路自注册） */}
+          <DemoLoginCard role="merchant" backHref="/admin" />
         </div>
       </main>
     );
