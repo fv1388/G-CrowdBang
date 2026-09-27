@@ -205,12 +205,56 @@ export default function TaskHallPage() {
         </div>
       </nav>
 
-      <section className="max-w-5xl mx-auto px-6 pt-14 pb-10 text-center">
-        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">Your Task Dashboard — Make Money Sharing Creator Videos</h1>
-        <p className="mt-4 text-lg text-slate-600 max-w-2xl mx-auto">
-          Browse available bounty tasks in your area, complete the hardware GPS check, publish your video, and get paid $3.00 once your work is verified.
-        </p>
-        <a href="#tasks" className="mt-6 inline-block px-6 py-3 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700">Browse Tasks</a>
+      {/* 落地 Hero：美区裂变文案（合规：硬件GPS + 公开审计 + 托管 escrow） */}
+      <section className="bg-slate-900 text-white">
+        <div className="max-w-5xl mx-auto px-6 py-16 text-center">
+          <span className="inline-block rounded-full bg-emerald-500/15 px-4 py-1 text-xs font-medium text-emerald-300">
+            Earn $3 per task · No experience needed
+          </span>
+          <h1 className="mt-5 text-3xl sm:text-5xl font-extrabold tracking-tight">
+            Turn your free time into <span className="text-emerald-400">cash</span>
+          </h1>
+          <p className="mt-5 text-lg text-slate-300 max-w-2xl mx-auto leading-relaxed">
+            Browse real crowdsourcing tasks from brands, verify your location with your phone's
+            hardware GPS, and get paid after a transparent audit. Work from anywhere in the US,
+            whenever you have 10 free minutes.
+          </p>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+            <a href="#tasks" className="px-7 py-3 rounded-xl bg-emerald-500 text-emerald-950 font-bold hover:bg-emerald-400">
+              Browse Available Tasks →
+            </a>
+            <a href="#how" className="px-7 py-3 rounded-xl border border-slate-600 text-slate-200 font-semibold hover:border-slate-400">
+              How It Works ↓
+            </a>
+          </div>
+          <p className="mt-6 text-xs text-slate-400">
+            Hardware-level GPS check · Public status audit · Escrow-managed payouts
+          </p>
+        </div>
+      </section>
+
+      {/* 价值主张（Why Join）三卡片 */}
+      <section className="max-w-5xl mx-auto px-6 pt-8">
+        <div className="grid gap-6 sm:grid-cols-3">
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <p className="text-2xl font-extrabold text-emerald-600">$3.00 / task</p>
+            <p className="mt-2 text-sm leading-relaxed text-slate-600">
+              Every verified task pays a flat $3.00 straight to your wallet. Stack as many as you like.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <p className="text-2xl font-extrabold text-emerald-600">100% flexible</p>
+            <p className="mt-2 text-sm leading-relaxed text-slate-600">
+              Work from your phone, anywhere in the US, whenever you have a spare 10 minutes.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <p className="text-2xl font-extrabold text-emerald-600">No experience</p>
+            <p className="mt-2 text-sm leading-relaxed text-slate-600">
+              No followers, no editing skills, no application. If you can use a phone, you can earn.
+            </p>
+          </div>
+        </div>
       </section>
 
       {/* 顶部专属钱包对账面板 + PayPal 提现表单（Worker 工作台右侧/顶部） */}
@@ -311,7 +355,7 @@ export default function TaskHallPage() {
         </div>
       </section>
 
-      <section className="max-w-5xl mx-auto px-6 py-12">
+      <section id="how" className="max-w-5xl mx-auto px-6 py-12">
         <h2 className="text-2xl font-bold text-center">How It Works</h2>
         <div className="mt-8 grid gap-6 md:grid-cols-3">
           {flow.map((f, i) => (
