@@ -27,6 +27,7 @@ export default function AuditPage({ params }) {
   // 结算反馈
   const [settleMsg, setSettleMsg] = useState("");
   const [settlingId, setSettlingId] = useState(null);
+  const [tiktokNeeded, setTiktokNeeded] = useState(false);
 
   useEffect(() => {
     if (!campaignId) return;
@@ -53,6 +54,7 @@ export default function AuditPage({ params }) {
     if (!merchantId) { setSettleMsg("You must be a signed-in merchant."); return; }
     setSettlingId(submissionId);
     setSettleMsg("");
+    setTiktokNeeded(false);
     try {
       const res = await fetch("/api/tasks/verify-and-payout", {
         method: "POST",
@@ -61,6 +63,7 @@ export default function AuditPage({ params }) {
       });
       const data = await res.json();
       if (data?.error === "TIKTOK_TOKEN_REQUIRED") {
+        setTiktokNeeded(true);
         setSettleMsg("Settlement blocked — connect a TikTok account first (required for official status audit).");
       } else if (data?.result === "verified") {
         setSettleMsg(`✅ ${submissionId} verified — $3.00 paid, $1.00 platform fee.`);
@@ -143,6 +146,32 @@ export default function AuditPage({ params }) {
         <Link href="/admin/connect-tiktok" className="mt-1 inline-block text-sm text-indigo-600 hover:underline">
           Manage TikTok connection →
         </Link>
+
+        {/* 结算被 TikTok 令牌拦截时的 merchant 侧引导横幅 */}
+        {tiktokNeeded && (
+          <div className="mt-4 rounded-2xl border border-amber-300 bg-amber-50 p-5">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-semibold text-amber-800">⚠️ Connect a TikTok account to settle claims</p>
+                <p className="mt-1 text-sm text-amber-700">
+                  Settlement calls the official status audit, which requires a valid TikTok access token
+                  for this merchant. Complete these steps to unlock payout:
+                </p>
+                <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-amber-700">
+                  <li>Open <strong>Connect TikTok</strong> and authorize your creator account.</li>
+                  <li>Confirm the token status shows <strong>active</strong> in the token ledger.</li>
+                  <li>Return here and press <strong>Settle &amp; Payout</strong> again.</li>
+                </ol>
+              </div>
+              <Link
+                href="/admin/connect-tiktok"
+                className="shrink-0 rounded-lg bg-black px-5 py-2.5 text-sm font-semibold text-white hover:bg-neutral-800"
+              >
+                Connect TikTok now →
+              </Link>
+            </div>
+          </div>
+        )}
 
         {settleMsg && (
           <div className="mt-4 rounded-xl border border-slate-200 bg-white p-3 text-sm text-slate-700">{settleMsg}</div>
