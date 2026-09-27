@@ -213,6 +213,63 @@ export default function TaskHallPage() {
         <a href="#tasks" className="mt-6 inline-block px-6 py-3 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700">Browse Tasks</a>
       </section>
 
+      {/* 顶部专属钱包对账面板 + PayPal 提现表单（Worker 工作台右侧/顶部） */}
+      <section className="max-w-5xl mx-auto px-6 pb-6">
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-sm text-slate-500">Your wallet (withdrawable balance)</p>
+              <p className="mt-1 text-3xl font-bold text-emerald-600">${Number(balance).toFixed(2)}</p>
+              <p className="mt-1 text-xs text-slate-400">$3.00 per verified task, paid to your withdrawable balance.</p>
+            </div>
+
+            <div className="w-full lg:max-w-md">
+              <h2 className="text-sm font-semibold text-slate-700">Withdraw to PayPal</h2>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="block text-xs text-slate-600">Amount (USD)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    step="0.01"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    placeholder="e.g. 3.00"
+                    className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-600">PayPal email</label>
+                  <input
+                    type="email"
+                    value={paypalEmail}
+                    onChange={(e) => setPaypalEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+              </div>
+              <button
+                onClick={requestWithdrawal}
+                disabled={withdrawState === "submitting"}
+                className="mt-3 w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+              >
+                {withdrawState === "submitting" ? "Requesting transfer..." : "Request Withdrawal"}
+              </button>
+
+              {withdrawState === "success" && (
+                <p className="mt-2 rounded-lg bg-emerald-50 border border-emerald-200 p-2 text-xs text-emerald-700">
+                  ✅ Withdrawal requested ({lastPayoutId ? `#${lastPayoutId}` : ""}). Processed as PENDING_TRANSFER.
+                </p>
+              )}
+              {withdrawState === "error" && (
+                <p className="mt-2 rounded-lg bg-rose-50 border border-rose-200 p-2 text-xs text-rose-700">{withdrawMsg}</p>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section id="tasks" className="max-w-5xl mx-auto px-6 pb-10">
         <h2 className="text-2xl font-bold">Available Bounties</h2>
 
@@ -261,64 +318,6 @@ export default function TaskHallPage() {
               <p className="mt-2 text-sm leading-relaxed text-slate-600">{f.body}</p>
             </div>
           ))}
-        </div>
-      </section>
-
-      {/* 收益余额 + PayPal 提现申请（同页闭环） */}
-      <section className="max-w-4xl mx-auto px-6 pb-14">
-        <div className="rounded-2xl border border-slate-200 bg-white p-6">
-          <div className="flex items-center justify-between">
-            <h3 className="font-semibold">Earnings &amp; Withdrawal</h3>
-            <span className="text-sm text-slate-500">Available: <strong className="text-emerald-600">${Number(balance).toFixed(2)}</strong></span>
-          </div>
-
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className="block text-sm text-slate-600">Amount (USD)</label>
-              <input
-                type="number"
-                min="1"
-                step="0.01"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder="e.g. 3.00"
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-slate-600">PayPal email</label>
-              <input
-                type="email"
-                value={paypalEmail}
-                onChange={(e) => setPaypalEmail(e.target.value)}
-                placeholder="you@example.com"
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-          </div>
-
-          <button
-            onClick={requestWithdrawal}
-            disabled={withdrawState === "submitting"}
-            className="mt-4 w-full rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
-          >
-            {withdrawState === "submitting" ? "Requesting transfer..." : "Request Withdrawal"}
-          </button>
-
-          {withdrawState === "success" && (
-            <p className="mt-3 rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-700">
-              ✅ Withdrawal requested ({lastPayoutId ? `#${lastPayoutId}` : ""}). It will be processed by the platform as PENDING_TRANSFER.
-            </p>
-          )}
-          {withdrawState === "error" && (
-            <p className="mt-3 rounded-lg bg-rose-50 border border-rose-200 p-3 text-sm text-rose-700">{withdrawMsg}</p>
-          )}
-
-          <ul className="mt-4 space-y-2 text-sm text-slate-600">
-            <li><strong className="text-slate-800">Earnings:</strong> $3.00 per verified task, paid to your withdrawable balance.</li>
-            <li><strong className="text-slate-800">Verification:</strong> every task is audited for public status and location consistency.</li>
-            <li><strong className="text-slate-800">Compliance:</strong> location data is used solely to confirm task eligibility and is handled per our privacy policy.</li>
-          </ul>
         </div>
       </section>
     </main>
