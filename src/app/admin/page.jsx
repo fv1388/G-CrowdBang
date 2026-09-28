@@ -230,6 +230,26 @@ export default function MerchantConsole() {
         <p className="mt-2 text-slate-400">Top up your USD escrow wallet, then publish bounty campaigns.</p>
         <p className="text-sm text-slate-500">先充值你的美元托管钱包，再发布悬赏任务。</p>
 
+        {/* TikTok 官方发布账号绑定入口（跳转 connect-tiktok，该页已动态锁定 redirect_uri） */}
+        <div className="mt-8 rounded-2xl border border-gray-800 bg-gradient-to-br from-gray-900 to-gray-950 p-6 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h2 className="font-semibold text-slate-200">Link Your Official TikTok Account</h2>
+              <p className="text-xs text-slate-500">绑定你的 TikTok 官方发布账号（一键授权）</p>
+              <p className="mt-1 text-xs text-slate-400">
+                Redirect URI is locked dynamically to this origin — no environment drift.
+              </p>
+              <p className="text-xs text-slate-500">回调地址随当前域名自动锁定 —— 杜绝漂移报错。</p>
+            </div>
+            <Link
+              href="/admin/connect-tiktok"
+              className="shrink-0 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 px-5 py-3 text-sm font-bold text-slate-900 shadow-[0_0_18px_rgba(251,191,36,0.30)] hover:from-amber-300 hover:to-yellow-400 transition-all duration-200 active:scale-[0.99]"
+            >
+              🔗 Link TikTok Account
+            </Link>
+          </div>
+        </div>
+
         {/* 钱包充值卡 */}
         <div className="mt-8 rounded-2xl border border-gray-800 bg-gray-900 p-6 shadow-sm">
           <h2 className="font-semibold text-slate-200">USD Wallet (PayPal)</h2>

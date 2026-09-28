@@ -102,9 +102,11 @@ export default function ConnectTikTok() {
   const connectTikTok = async () => {
     if (!merchantId) return;
     const clientKey = process.env.NEXT_PUBLIC_TIKTOK_CLIENT_KEY;
-    const redirectUri =
-      process.env.NEXT_PUBLIC_TIKTOK_REDIRECT_URI ||
-      `${window.location.origin}/api/auth/callback/tiktok`;
+    // 【工业级防错 · 动态 Redirect URI 永久锁定】
+    // 严禁硬编码任何固定回调域名：永远用浏览器当前活跃 origin 动态拼接，
+    // 本地自动为 http://localhost:3000/...，线上自动为 https://g-crowdbang.vercel.app/...
+    // （或未来主商城域名 https://get100shop.com/...）。从根源杜绝 redirect_uri_mismatch 漂移报错。
+    const redirectUri = `${window.location.origin}/api/auth/callback/tiktok`;
 
     if (clientKey) {
       // 标准 OAuth 授权 URL（官方端点）；state 携带 merchantId，供服务端换码后归账
