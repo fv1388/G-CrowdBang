@@ -14,7 +14,11 @@ import Link from "next/link";
 import { useAuthSession } from "@/database/auth";
 import DemoLoginCard from "@/app/components/DemoLoginCard";
 
-const SCOPES = ["video.publish", "user.info.basic"].join(",");
+// 登录授权 scope：仅需 user.info.basic。
+// 注意：不携带 video.publish —— 该 scope 属 Content Posting API（需人工过审），
+// 本平台采用"老外手动发布 + 公开链接反查"策略，无需、也不应请求该权限，
+// 携带会导致 TikTok 授权被直接拒绝（表现为点击无跳转/立即报错跳回）。
+const SCOPES = ["user.info.basic"].join(",");
 
 export default function ConnectTikTok() {
   const { session, loading } = useAuthSession();

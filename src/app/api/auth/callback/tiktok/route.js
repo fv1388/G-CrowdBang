@@ -55,14 +55,16 @@ function fingerprint(token) {
   return `sha256:${createHash("sha256").update(String(token)).digest("hex").slice(0, 16)}`;
 }
 
-const SCOPES = ["video.publish", "user.info.basic"];
+// 登录授权 scope：仅需 user.info.basic（与 connect-tiktok 页一致，不请求 video.publish）
+const SCOPES = ["user.info.basic"];
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
   const state = searchParams.get("state") || "";
   const merchantId = state.split("_")[1] || null;
-  const base = "http://localhost:3000";
+  // 动态取当前请求域名（线上回调→线上控制台，本地回调→本地控制台），不再写死 localhost
+  const base = new URL(request.url).origin;
 
   // 跳回商户控制台 Connect 页
   const backOk = `${base}/admin/connect-tiktok?connected=1`;
