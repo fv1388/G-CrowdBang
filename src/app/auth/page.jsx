@@ -6,10 +6,15 @@
 //   1) 双端角色卡片式物理切换：商户 MERCHANT / 老外 WORKER（强制先选身份）。
 //   2) 企业级合规法律协议勾选锁：未勾选 Terms & Privacy → 所有提交按钮物理禁用。
 //   3) 完备邮箱/密码表单：实时格式正则 + 密码强度 + loading / error 状态挂载。
-//   4) 高级暗黑微光科技感 UI + 一键 Google 登录按钮（复用四色 G 官方图标）。
+//   4) 高级暗黑微光科技感 UI + 一键 Google 登录按钮（官方四色 G 图标）。
+//
+// 【防爆错拦截 · 邮箱已占用智能降级】
+//   注册时若 Firebase 返回 auth/email-already-in-use（该邮箱已被另一角色/身份占用），
+//   系统不再让用户卡死，而是：自动切换到"登录"模式并保留已填邮箱，引导直接登录。
+//   彻底规避"一个邮箱一个账号"规则导致的注册无响应。
 //
 // 鉴权调用契约（与 src/database/auth.js 对齐）：
-//   - signInWithGoogle(role)      一键谷歌（新用户锁定角色；老用户继承账本角色）
+//   - signInWithGoogle(role)      一键谷歌（盲测占位环境自动 mock，不弹窗防报错）
 //   - signUpWithEmail(email,pwd,role) 邮箱注册（role 小写入库，与 firestore.rules 一致）
 //   - signInWithEmail(email,pwd)  邮箱登录
 //   - firebaseConfigReady()       真实 Firebase 就绪哨兵（未配置走本地 mock）
@@ -27,6 +32,10 @@ import {
 // ---- 标准邮箱格式正则（阻挡乱填垃圾邮箱）----
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// ---- 邮箱已占用 → 引导一键切登录 ----
+const EMAIL_ALREADY_IN_USE_MSG =
+  "This email is already registered — we switched you to Sign In to continue. / 该邮箱已被注册，已为你切换为登录模式，请直接输入密码登录。";
+
 export default function AuthPage() {
   // 双端角色：强制用户先选择身份（展示用大写标签）
   const [role, setRole] = useState("MERCHANT"); // 'MERCHANT' | 'WORKER'
@@ -37,11 +46,12 @@ export default function AuthPage() {
   // 表单字段
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  // 实时校验错误
+  // 实时校验错误（内联）
   const [fieldError, setFieldError] = useState("");
   // 提交状态（loading / 服务端错误）
   const [loading, setLoading] = useState(false);
   const [serverError, setServerError] = useState("");
+  const [infoNote, setInfoNote] = useState(""); // 友好提示（如切到登录）
 
   // 实时前端校验：邮箱格式 + 密码强度（>6 位）
   const emailValid = EMAIL_RE.test(email);
@@ -59,9 +69,10 @@ export default function AuthPage() {
   const handleEmailSubmit = async (ev) => {
     ev.preventDefault();
     setServerError("");
+    setInfoNote("");
 
     if (submitLocked) {
-      setFieldError("Please accept the Terms of Service & Privacy Policy first.");
+      setFieldError("Please accept the Terms of Service & Privacy Policy first. / 请先勾选服务条款。");
       return;
     }
     if (!emailValid) {
@@ -87,17 +98,25 @@ export default function AuthPage() {
       window.location.href = routeByRole(s?.role);
     } catch (err) {
       const code = err?.code || "";
+
+      // 【核心防爆 · 邮箱已占用】→ 自动切到登录模式并保留邮箱，不再卡死
+      if (code === "auth/email-already-in-use") {
+        setMode("signin");
+        setInfoNote(EMAIL_ALREADY_IN_USE_MSG);
+        setServerError("");
+        setLoading(false);
+        return;
+      }
+
       const map = {
-        "auth/email-already-in-use":
-          "This email is already registered. Please sign in instead. / 该邮箱已注册，请直接登录。",
         "auth/invalid-email": "Invalid email format. / 邮箱格式无效。",
         "auth/weak-password": "Password too weak. / 密码强度不足。",
         "auth/user-not-found":
           "No account with this email. Please sign up first. / 该邮箱未注册，请先注册。",
-        "auth/wrong-password":
-          "Incorrect password. / 密码错误，请重试。",
-        "auth/invalid-credential":
-          "Incorrect email or password. / 邮箱或密码不正确。",
+        "auth/wrong-password": "Incorrect password. / 密码错误，请重试。",
+        "auth/invalid-credential": "Incorrect email or password. / 邮箱或密码不正确。",
+        "auth/too-many-requests":
+          "Too many attempts. Please try again later. / 尝试次数过多，请稍后再试。",
       };
       setServerError(
         map[code] ||
@@ -111,6 +130,7 @@ export default function AuthPage() {
   // ---- 一键谷歌登录（受法律勾选锁保护）----
   const handleGoogle = async () => {
     setServerError("");
+    setInfoNote("");
     if (submitLocked) {
       setFieldError("Please accept the Terms of Service & Privacy Policy first.");
       return;
@@ -127,12 +147,9 @@ export default function AuthPage() {
           "Google sign-in is not enabled yet in Firebase Auth. 谷歌登录尚未在 Firebase 启用。",
         "auth/unauthorized-domain":
           "This domain is not authorized for Google sign-in. 当前域名未授权谷歌登录。",
-        "auth/network-request-failed":
-          "Network issue reaching Google. 网络无法连接谷歌。",
-        "auth/popup-closed-by-user":
-          "Popup closed before sign-in completed. 授权弹窗已关闭。",
-        "auth/popup-blocked":
-          "Popup blocked by browser. 浏览器拦截了授权弹窗。",
+        "auth/network-request-failed": "Network issue reaching Google. 网络无法连接谷歌。",
+        "auth/popup-closed-by-user": "Popup closed before sign-in completed. 授权弹窗已关闭。",
+        "auth/popup-blocked": "Popup blocked by browser. 浏览器拦截了授权弹窗。",
       };
       setServerError(
         map[err?.code] ||
@@ -216,6 +233,7 @@ export default function AuthPage() {
               onChange={(e) => {
                 setEmail(e.target.value);
                 setFieldError("");
+                setInfoNote("");
               }}
               placeholder="email@example.com"
               className="w-full rounded-xl bg-slate-200 text-slate-900 px-4 py-3 text-sm outline-none ring-1 ring-transparent transition-all focus:ring-purple-400 focus:bg-white placeholder:text-slate-500"
@@ -236,6 +254,7 @@ export default function AuthPage() {
               onChange={(e) => {
                 setPassword(e.target.value);
                 setFieldError("");
+                setInfoNote("");
               }}
               placeholder="••••••••"
               className="w-full rounded-xl bg-slate-200 text-slate-900 px-4 py-3 text-sm outline-none ring-1 ring-transparent transition-all focus:ring-purple-400 focus:bg-white placeholder:text-slate-500"
@@ -251,6 +270,12 @@ export default function AuthPage() {
           {(fieldError || serverError) && (
             <div className="rounded-xl border border-rose-800 bg-rose-950/40 px-4 py-3 text-xs text-rose-300">
               {fieldError || serverError}
+            </div>
+          )}
+          {/* 友好提示（如邮箱已占用 → 已切登录） */}
+          {infoNote && (
+            <div className="rounded-xl border border-amber-800 bg-amber-950/40 px-4 py-3 text-xs text-amber-300">
+              💡 {infoNote}
             </div>
           )}
 
@@ -340,6 +365,7 @@ export default function AuthPage() {
                   setMode("signin");
                   setServerError("");
                   setFieldError("");
+                  setInfoNote("");
                 }}
                 className="text-purple-300 underline font-medium"
               >
@@ -355,6 +381,7 @@ export default function AuthPage() {
                   setMode("register");
                   setServerError("");
                   setFieldError("");
+                  setInfoNote("");
                 }}
                 className="text-purple-300 underline font-medium"
               >
