@@ -8,7 +8,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { signUpWithEmail, signInWithGoogle } from "@/database/auth";
+import { signUpWithEmail, signInWithEmail, signInWithGoogle } from "@/database/auth";
 
 // 本地 mock 模式密码不参与真实校验（firebaseConfigReady() 为 false），
 // 一键登录直接以开发者测试邮箱建立确定性会话（uid_<邮箱前缀>），无需手输。
@@ -28,14 +28,32 @@ export default function DemoLoginCard({ role, backHref, introLabel }) {
   const [pwd, setPwd] = useState("");
   const [msg, setMsg] = useState("");
 
-  // 一键开发者登录：免手输，直接建立确定性会话（本地 mock 专用）
+  // 先尝试登录，账号不存在(未注册)时自动转注册——避免"已存在账号再注册"导致 email-already-in-use
+  const signInOrSignUp = async (email, pwd, role) => {
+    try {
+      const s = await signInWithEmail(email, pwd);
+      return { kind: "signin", session: s };
+    } catch (e) {
+      if (e?.code === "auth/user-not-found") {
+        const s = await signUpWithEmail(email, pwd, role);
+        return { kind: "signup", session: s };
+      }
+      throw e;
+    }
+  };
+
+  // 一键开发者登录：免手输，先登录后注册（本地 mock 专用）
   const quickLogin = async () => {
     try {
-      const s = await signUpWithEmail(DEV_EMAIL, DEV_MOCK_PASSWORD, role);
-      setMsg(`Signed in as ${role} (${s.uid}) — one-click dev session.`);
+      const r = await signInOrSignUp(DEV_EMAIL, DEV_MOCK_PASSWORD, role);
+      setMsg(`Signed in as ${role} (${r.session.uid}) — one-click dev session.`);
     } catch (e) {
       console.error("[DemoLoginCard] quick login failed", e);
-      setMsg("Quick sign-in failed.");
+      setMsg(
+        e?.code === "auth/wrong-password"
+          ? "Sign-in failed: the dev account password changed. / 演示账号密码已变更，登录失败。"
+          : "Quick sign-in failed."
+      );
     }
   };
 
@@ -45,11 +63,20 @@ export default function DemoLoginCard({ role, backHref, introLabel }) {
       return;
     }
     try {
-      const s = await signUpWithEmail(email, pwd, role);
-      setMsg(`Signed in as ${role} (${s.uid}) — local demo session.`);
+      const r = await signInOrSignUp(email, pwd, role);
+      setMsg(
+        r.kind === "signup"
+          ? `New ${role} account created (${r.session.uid}). / 新${role === "merchant" ? "商户" : "接单人"}账号已注册。`
+          : `Signed in as ${role} (${r.session.uid}). / 已登录。`
+      );
     } catch (e) {
       console.error("[DemoLoginCard] sign-in failed", e);
-      setMsg("Sign-in failed. Please try again.");
+      const map = {
+        "auth/email-already-in-use": "Email already registered — please sign in. / 邮箱已注册，请直接登录。",
+        "auth/wrong-password": "Incorrect password. / 密码错误。",
+        "auth/invalid-email": "Invalid email. / 邮箱格式无效。",
+      };
+      setMsg(map[e?.code] || "Sign-in failed. Please try again. / 登录失败，请重试。");
     }
   };
 
@@ -90,6 +117,12 @@ export default function DemoLoginCard({ role, backHref, introLabel }) {
             Sign Up · 注册
           </Link>
         </div>
+        <Link
+          href="/auth"
+          className="mt-2 block rounded-lg bg-purple-600 px-4 py-2 text-center text-xs font-semibold text-white hover:bg-purple-500"
+        >
+          Create Account · 统一注册门户（选 Worker 一键谷歌/邮箱注册）
+        </Link>
         <Link href={backHref} className="mt-2 block text-xs text-indigo-500 hover:underline">
           ← {backHref === "/" ? "Back to landing / 返回首页" : "Back"}
         </Link>
@@ -153,7 +186,13 @@ export default function DemoLoginCard({ role, backHref, introLabel }) {
       </button>
       <p className="mt-1 text-xs text-indigo-600">解锁{role === "merchant" ? "商户控制台" : "任务大厅"}（演示）</p>
       {msg && <p className="mt-2 text-xs text-slate-500">{msg}</p>}
-      <Link href={backHref} className="mt-3 block text-center text-xs text-indigo-500 hover:underline">
+      <Link
+        href="/auth"
+        className="mt-3 block text-center text-xs font-semibold text-purple-600 hover:underline"
+      >
+        New {role === "merchant" ? "Merchant" : "Worker"}? Create real account at /auth · 到 /auth 注册真实账号 →
+      </Link>
+      <Link href={backHref} className="mt-2 block text-center text-xs text-indigo-500 hover:underline">
         ← Back
       </Link>
     </div>
