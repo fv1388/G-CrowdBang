@@ -166,6 +166,7 @@ export async function signInWithGoogle(selectedRole = "WORKER") {
       email: user.email,
       displayName: user.displayName,
       role,
+      balance_usd: 0.0,
       created_at: new Date().toISOString(),
     });
     // 老外新用户：初始化零额度钱包，防止查账报红
@@ -201,6 +202,7 @@ export async function signUpWithEmail(email, password, role = "worker") {
     uid: user.uid,
     email,
     role,
+    balance_usd: 0.0,
     created_at: new Date().toISOString(),
   });
   if (String(role).toUpperCase() === "WORKER") {

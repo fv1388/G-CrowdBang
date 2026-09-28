@@ -6,9 +6,17 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     function isSignedIn() { return request.auth != null; }
-    function isMerchant() { return isSignedIn() && request.auth.token.role == 'merchant'; }
-    function isWorker()  { return isSignedIn() && request.auth.token.role == 'worker'; }
-    function isAdmin()   { return isSignedIn() && request.auth.token.role == 'admin'; }
+
+    // 权威角色来源：读取 users/{uid} 文档的 role 字段（注册/登录时写入）。
+    // 采用文档而非 custom claim 作为单一事实来源，避免纯邮箱/密码注册的 token
+    // 无 role claim 而导致基于角色的前端读写被误拒；文档缺失时返回 null（即无角色）。
+    function roleOf() {
+      let u = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      return u.exists ? u.data.role : null;
+    }
+    function isMerchant() { return isSignedIn() && roleOf() == 'merchant'; }
+    function isWorker()  { return isSignedIn() && roleOf() == 'worker'; }
+    function isAdmin()   { return isSignedIn() && roleOf() == 'admin'; }
     function isOwner(uid) { return request.auth.uid == uid; }
 
     // ---------- 集合一：campaigns（商户悬赏任务总表）----------
@@ -60,9 +68,9 @@ service cloud.firestore {
       // 读取：仅本人（余额为隐私，不公开）
       allow read: if isOwner(userId) || isAdmin();
 
-      // 创建：仅本人，角色由认证层下发，默认 worker
+      // 创建：仅本人，角色为 worker 或 merchant，初始余额必须为 0（防刷金）
       allow create: if isOwner(userId)
-        && request.resource.data.role == 'worker'
+        && (request.resource.data.role == 'worker' || request.resource.data.role == 'merchant')
         && request.resource.data.balance_usd == 0;
 
       // 更新：本人可改非资金资料；余额(balance_usd)仅 admin（结算进程）可改
@@ -71,6 +79,17 @@ service cloud.firestore {
             && request.resource.data.balance_usd == resource.data.balance_usd);
 
       // 删除：仅管理员
+      allow delete: if isAdmin();
+    }
+
+    // ---------- 集合三-b：workers（老外接单人钱包资产与提现总账）----------
+    // 老外零钱包由注册流程本人创建；余额余额(balance)仅服务端 admin（结算进程）可改，
+    // 防止老外前端自增余额刷钱。删除仅 admin。
+    match /workers/{workerId} {
+      allow read: if isOwner(workerId) || isAdmin();
+      allow create: if isOwner(workerId)
+        && request.resource.data.balance == 0;
+      allow update: if isAdmin();
       allow delete: if isAdmin();
     }
 
