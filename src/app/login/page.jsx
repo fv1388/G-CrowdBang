@@ -164,7 +164,11 @@ export default function LoginPage() {
           </div>
         )}
 
-        <Link href="/" className="mt-5 block text-xs text-indigo-500 hover:underline">
+        <Link href="/auth" className="mt-4 block text-xs font-medium text-purple-600 hover:underline">
+          Upgrade: unified multi-role portal / 升级版统一登录注册门户 →
+        </Link>
+
+        <Link href="/" className="mt-3 block text-xs text-indigo-500 hover:underline">
           ← Back to landing / 返回首页
         </Link>
       </div>
