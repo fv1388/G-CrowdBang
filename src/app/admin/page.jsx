@@ -129,11 +129,25 @@ export default function MerchantConsole() {
     }
 
     setPublishState("submitting");
-    setPublishMsg("");
+    setPublishMsg("Uploading video asset... 正在上传视频素材...");
     try {
-      // 本地测试占位环境：video_url 指向 /assets/{文件名}（public/assets 可直接播放）。
-      // 未来接云存储后再改为真实上传返回的 CDN 地址；mock/真实 Firestore 均以该 URL 记账。
-      const videoUrl = `/assets/${selectedVideoName}`;
+      // 真上传：把商户本地选中的视频文件 POST 到 /api/upload（生产=Vercel Blob 永久 CDN，
+      // 本地=public/uploads），拿回真实可访问 URL 作为 campaign.video_url，
+      // 这样老外端播放的就是商户真正上传的视频，而不是固定 demo。
+      let videoUrl;
+      if (videoFile) {
+        const fd = new FormData();
+        fd.append("file", videoFile);
+        const upRes = await fetch("/api/upload", { method: "POST", body: fd });
+        const upData = await upRes.json().catch(() => ({}));
+        if (!upRes.ok) {
+          throw new Error(upData?.error || "UPLOAD_FAILED");
+        }
+        videoUrl = upData.url;
+      } else {
+        // 未选文件时回退到固定 demo（仅占位；商户实际应选择本地视频上传）
+        videoUrl = `/assets/${selectedVideoName}`;
+      }
       // 将目标账号注入文案开头，使老外端任务卡能直接看到指定发布账号
       const captionText = `${targetAccount} — ${caption.trim()}`;
       // title 由文案首行截断自动生成（后端必填）
@@ -178,7 +192,7 @@ export default function MerchantConsole() {
     } catch (err) {
       console.error("[admin] publish failed", err);
       setPublishState("error");
-      setPublishMsg("Network error.");
+      setPublishMsg(err?.message ? `Publish failed: ${err.message}.` : "Network error.");
     }
   };
 
