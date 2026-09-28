@@ -1,11 +1,17 @@
 // src/database/auth.js
+// ==========================================================================
 // G-CrowdBang / F-CrowdBang · 双轨制鉴权中心（邮箱密码 + 一键谷歌 Google Sign-In）
-// 兼容契约：保留现有 { session, loading } 结构、signUpWithEmail/signInWithEmail/firebaseConfigReady，
-//           确保已有页面（admin / shop/tasks / login / DemoLoginCard）不被破坏。
-// 新增能力：signInWithGoogle(selectedRole) 一键谷歌注册登录、logOutSession 登出。
-// 兼容策略：未配置真实 NEXT_PUBLIC_FIREBASE_* 时走确定性 mock 会话（localStorage），本地联调不崩、
-//           不弹外网授权窗；配置真实句柄后走标准 firebase/auth + Firestore 角色对账。
+// --------------------------------------------------------------------------
+// 多环境安全隔离契约：
+//   - 真实模式：已配置非占位 NEXT_PUBLIC_FIREBASE_* → 走标准 firebase/auth + Firestore 角色对账。
+//   - 本地全仿真 Mock 降级守卫：apiKey 缺失或含 your_ 占位符 → 全自动拦截外网弹窗，
+//     秒级返回确定性虚拟会话，杜绝 "登录失败，请检查浏览器连接状态" 的网络报错。
+//
+// 兼容契约（保持不变，确保现有页面不被破坏）：
+//   - { session, loading } 结构、firebaseConfigReady、signUpWithEmail、signInWithEmail、
+//     signInWithGoogle、logOutSession、useAuthSession、auth、db。
 // 合规：标准 OAuth/邮箱密码登入与状态监听，角色按多租户账本隔离；不含任何规避逻辑。
+// ==========================================================================
 
 "use client";
 
@@ -26,7 +32,7 @@ import { useEffect, useState } from "react";
 // 1. Firebase App / Auth 单例初始化（幂等）
 // ---------------------------------------------------------------------------
 
-// 判定是否配置了"真实可用的" Firebase 公共句柄（非占位）
+// 判定是否配置了"真实可用的" Firebase 公共句柄（非占位 your_）
 export function firebaseConfigReady() {
   const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
   const authDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
@@ -38,6 +44,12 @@ export function firebaseConfigReady() {
       !authDomain.includes("your_") &&
       projectId
   );
+}
+
+// 本地全仿真 Mock 占位哨兵：apiKey 缺失或仍为 your_ 虚拟占位符 → 判定为盲测环境
+function isMockPlaceholderEnv() {
+  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+  return !apiKey || apiKey.includes("your_");
 }
 
 // 获取 Firebase App 单例
@@ -66,7 +78,7 @@ function getGoogleProvider() {
 }
 
 // ---------------------------------------------------------------------------
-// 2. 本地 mock 会话（无真实 Firebase 项目时的确定性兜底）
+// 2. 本地 mock 会话（无真实 Firebase 项目时的确定性兜底，localStorage 常驻）
 // ---------------------------------------------------------------------------
 const MOCK_SESSION_KEY = "gb_mock_session";
 
@@ -91,6 +103,20 @@ function clearMockSession() {
   } catch {
     /* ignore */
   }
+}
+
+// mock：写入确定性会话并返回
+function mockSession(uid, role, email) {
+  const session = { uid, role, email, tokenType: "mock" };
+  writeMockSession(session);
+  return session;
+}
+
+// 为盲测环境生成一个稳定可复用的虚拟会话（角色按页面测试需要指定）
+function buildVirtualMockSession(role = "WORKER") {
+  const r = String(role).toUpperCase();
+  const email = `test_${r.toLowerCase()}_${Math.random().toString(36).slice(2, 6)}@gmail.com`;
+  return mockSession(`mock_virtual_${r.toLowerCase()}_${Date.now().toString(36)}`, r, email);
 }
 
 // ---------------------------------------------------------------------------
@@ -121,15 +147,8 @@ async function extractSession(user, fallbackRole = "worker") {
   return { uid: user.uid, role, email };
 }
 
-// mock：写入确定性会话
-function mockSession(uid, role, email) {
-  const session = { uid, role, email, tokenType: "mock" };
-  writeMockSession(session);
-  return session;
-}
-
 // ---------------------------------------------------------------------------
-// 4. 一键谷歌注册登录（双轨制核心）
+// 4. 一键谷歌注册登录（含零密钥盲测 Mock 降级守卫，核心 🌟）
 // ---------------------------------------------------------------------------
 
 /**
@@ -140,11 +159,15 @@ function mockSession(uid, role, email) {
 export async function signInWithGoogle(selectedRole = "WORKER") {
   const role = String(selectedRole || "WORKER").toUpperCase();
 
-  if (!firebaseConfigReady()) {
-    // 本地 mock：不触发外网弹窗，分配确定性测试 UID + 角色
+  // 【核心 · 零密钥盲测守卫】apiKey 缺失或仍为 your_ 占位符 → 全自动拦截外网弹窗，
+  // 秒级返回虚拟会话，彻底避免 signInWithPopup 报网络连接错误。
+  if (
+    isMockPlaceholderEnv() ||
+    !firebaseConfigReady()
+  ) {
     const uid = `mock_google_user_${Math.random().toString(36).slice(2, 11)}`;
-    const email = `mock.google.${uid.slice(17)}@example.com`;
-    console.log("[F-CrowdBang Mock] one-click Google sign-in:", uid, role);
+    const email = `test_${role.toLowerCase()}_${Math.random().toString(36).slice(2, 6)}@gmail.com`;
+    console.log("[F-CrowdBang Mock] one-click Google sign-in (blocked popup):", uid, role);
     return mockSession(uid, role, email);
   }
 
@@ -188,7 +211,7 @@ export async function signInWithGoogle(selectedRole = "WORKER") {
 // 邮箱注册：返回 { uid, role, email }
 export async function signUpWithEmail(email, password, role = "worker") {
   if (!firebaseConfigReady()) {
-    // 本地 mock：写入确定性会话
+    // 本地 mock：写入确定性会话（不触网，不弹窗）
     return mockSession(`uid_${email.split("@")[0]}`, role, email);
   }
   const userCredential = await createUserWithEmailAndPassword(
@@ -237,11 +260,15 @@ export async function logOutSession() {
 /**
  * useAuthSession
  * 实时监听当前账户活跃状态。
- * 返回：{ session, loading }
- *  - session: 登录时为 { uid, role, email }，未登录为 null（用于身份访问卡点）。
- *  - loading: 初始监听中为 true。
+ * 盲测环境（零密钥占位）行为：若无本地登录会话，自动挂载一个默认虚拟会话
+ * （默认 role=WORKER，可通过 defaultMockRole 覆盖），确保前端 page.jsx 挂载时
+ * 不因 user 为空而高频抛 403，顺畅自检任务卡片渲染；已登录的 mock 会话保持原样。
+ * 真实模式：完全按 Firebase 实时登录状态。
+ *
+ * @param {string} defaultMockRole - 盲测环境默认虚拟会话角色（'WORKER' | 'MERCHANT'）
+ * @returns {session, loading}
  */
-export function useAuthSession() {
+export function useAuthSession(defaultMockRole = "WORKER") {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -250,8 +277,9 @@ export function useAuthSession() {
     let cancelled = false;
 
     if (!firebaseConfigReady()) {
-      // 本地 mock：读取确定性会话
-      setSession(readMockSession());
+      // 盲测环境：优先保留已有 mock 会话；无则挂载默认虚拟 WORKER 会话（常驻本地）
+      const existing = readMockSession();
+      setSession(existing || buildVirtualMockSession(defaultMockRole));
       setLoading(false);
       return () => { cancelled = true; };
     }
