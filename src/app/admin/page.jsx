@@ -5,11 +5,11 @@
 // 职责：
 //   1) 双角色鉴权卡点：挂载时经 useAuthSession 校验角色，非 'merchant' 物理拦截(403)。
 //   2) 商户美元账户充值（PayPal 服务端订单创建/校验后入账）。
-//   3) 本地选择视频上传发布悬赏（Publish & Deposit Escrow）：
-//       - 目标账号下拉框（锁定 @fv138888）
+//   3) 本地选择视频上传发布悬赏（Publish & Deposit Escrow · 零绑定手动分发模式）：
+//       - 目标账号手动输入框（target_tiktok_account，如 @fv138888，无 OAuth 绑定）
 //       - 本地视频上传 <input type="file" accept="video/mp4">
 //       - 任务文案大输入框（caption_text）
-//       - 通过标准 fetch 提交 /api/campaigns/create，载荷含 merchantId + 目标账号 + 视频文件名 + 文案
+//       - 通过标准 fetch 提交 /api/campaigns/create，载荷含 merchantId + 手动目标账号 + 视频文件名 + 文案
 // 合规：标准鉴权 + PayPal 支付校验 + 托管入账；不含任何规避逻辑。
 // ==========================================================================
 "use client";
@@ -31,8 +31,8 @@ export default function MerchantConsole() {
   const [topUpMsg, setTopUpMsg] = useState("");
   const [balance, setBalance] = useState(0);
 
-  // ---- 发布悬赏（本地视频上传） ----
-  const [targetAccount, setTargetAccount] = useState("@fv138888"); // 死锁目标账号
+  // ---- 发布悬赏（本地视频上传 · 零绑定手动分发）----
+  const [targetAccount, setTargetAccount] = useState(""); // 商户手动输入的目标发布账号（如 @fv138888）
   const [videoFile, setVideoFile] = useState(null); // 选中的本地 mp4 文件对象
   const [caption, setCaption] = useState(""); // 引流带货文案（caption_text）
   const [totalSlots, setTotalSlots] = useState("");
@@ -120,6 +120,12 @@ export default function MerchantConsole() {
       setPublishState("error");
       return;
     }
+    // 零绑定模式：目标发布账号必须由商户手动输入，缺失则拦截发布
+    if (!targetAccount.trim()) {
+      setPublishMsg("Enter the target TikTok account (e.g. @fv138888). 请输入目标发布账号。");
+      setPublishState("error");
+      return;
+    }
 
     setPublishState("submitting");
     setPublishMsg("");
@@ -140,7 +146,7 @@ export default function MerchantConsole() {
           title,
           video_url: videoUrl,
           caption_text: captionText,
-          target_account: targetAccount, // @fv138888（后端记账，老外端显示）
+          target_account: targetAccount, // 商户手动输入的目标发布号（如 @fv138888），后端记账 + 老外端显示
           target_hashtags: [],
           geotargeting_config: { enabled: false },
           escrow_summary: { total_slots: slots, payout_rate: rate, platform_fee: 1 },
@@ -218,7 +224,6 @@ export default function MerchantConsole() {
             Merchant Console
           </span>
           <Link href="/admin/campaigns" className="text-sm font-medium text-slate-400 hover:text-slate-200">My Campaigns</Link>
-          <Link href="/admin/connect-tiktok" className="text-sm font-medium text-slate-400 hover:text-slate-200">Connect TikTok</Link>
           <Link href="/shop/tasks" className="text-sm font-medium text-slate-400 hover:text-slate-200">Task Hall</Link>
           <span className="ml-auto text-xs text-slate-500">UID: {merchantId}</span>
         </div>
@@ -229,26 +234,6 @@ export default function MerchantConsole() {
         <p className="text-sm text-slate-500">商家控制台</p>
         <p className="mt-2 text-slate-400">Top up your USD escrow wallet, then publish bounty campaigns.</p>
         <p className="text-sm text-slate-500">先充值你的美元托管钱包，再发布悬赏任务。</p>
-
-        {/* TikTok 官方发布账号绑定入口（跳转 connect-tiktok，该页已动态锁定 redirect_uri） */}
-        <div className="mt-8 rounded-2xl border border-gray-800 bg-gradient-to-br from-gray-900 to-gray-950 p-6 shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h2 className="font-semibold text-slate-200">Link Your Official TikTok Account</h2>
-              <p className="text-xs text-slate-500">绑定你的 TikTok 官方发布账号（一键授权）</p>
-              <p className="mt-1 text-xs text-slate-400">
-                Redirect URI is locked dynamically to this origin — no environment drift.
-              </p>
-              <p className="text-xs text-slate-500">回调地址随当前域名自动锁定 —— 杜绝漂移报错。</p>
-            </div>
-            <Link
-              href="/admin/connect-tiktok"
-              className="shrink-0 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 px-5 py-3 text-sm font-bold text-slate-900 shadow-[0_0_18px_rgba(251,191,36,0.30)] hover:from-amber-300 hover:to-yellow-400 transition-all duration-200 active:scale-[0.99]"
-            >
-              🔗 Link TikTok Account
-            </Link>
-          </div>
-        </div>
 
         {/* 钱包充值卡 */}
         <div className="mt-8 rounded-2xl border border-gray-800 bg-gray-900 p-6 shadow-sm">
@@ -301,17 +286,20 @@ export default function MerchantConsole() {
           <p className="text-xs text-slate-500">资金（名额 ×（佣金 + $1 平台费））在作品核验前托管冻结。</p>
 
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            {/* 1) 目标账号下拉框（死锁 @fv138888） */}
+            {/* 1) 目标账号手动输入框（零绑定：商户手输目标发布号，如 @fv138888） */}
             <div className="sm:col-span-2">
-              <label className="block text-sm text-slate-300">Target Account</label>
-              <p className="text-xs text-slate-500">指定发布账号</p>
-              <select
+              <label className="block text-sm text-slate-300">Target TikTok Account</label>
+              <p className="text-xs text-slate-500">目标发布账号（手动输入，无需任何官方绑定）</p>
+              <input
+                type="text"
                 value={targetAccount}
                 onChange={(e) => setTargetAccount(e.target.value)}
-                className="mt-1 w-full rounded-xl bg-slate-800 border border-gray-700 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
-              >
-                <option value="@fv138888">@fv138888</option>
-              </select>
+                placeholder="例如: @fv138888"
+                className="mt-1 w-full rounded-xl bg-slate-800 border border-gray-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+              <p className="mt-1 text-xs text-slate-500">
+                老外将把视频手动发布到该账号，作为「手动零绑定分发」的核验对账锚点。
+              </p>
             </div>
 
             {/* 2) 本地视频上传控件 */}
