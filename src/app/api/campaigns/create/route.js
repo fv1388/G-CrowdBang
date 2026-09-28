@@ -60,7 +60,14 @@ function validateEscrow(escrow) {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { title, video_url, caption_text, target_hashtags, geotargeting_config, escrow_summary, merchantId, target_account, target_tiktok_account } = body || {};
+    const { title, video_url, caption_text, target_hashtags, geotargeting_config, escrow_summary, merchantId, target_account, target_tiktok_account, audit_strategy, audit_auto_approve_hours } = body || {};
+
+    // 人工核验超时自动放行窗口（小时）：商户可设，未设则默认 48h
+    const autoApproveHours = Number(audit_strategy?.auto_approve_after_hours ?? audit_auto_approve_hours);
+    const auditStrategy = {
+      mode: "manual", // 零绑定人工核验
+      auto_approve_after_hours: autoApproveHours > 0 ? autoApproveHours : 48,
+    };
 
     if (!title) {
       return NextResponse.json({ error: "TITLE_REQUIRED" }, { status: 400 });
@@ -79,6 +86,7 @@ export async function POST(request) {
       video_url: video_url ?? "",
       caption_text: caption_text ?? "",
       target_account: target_tiktok_account || target_account || "", // 商户手动输入的零绑定目标发布号（如 @fv138888）
+      audit_strategy: auditStrategy, // 人工核验 + 超时自动放行窗口（默认 48h）
       target_hashtags: Array.isArray(target_hashtags) ? target_hashtags : [],
       geotargeting_config: {
         enabled: !!geotargeting_config?.enabled,
@@ -151,6 +159,7 @@ export async function POST(request) {
         merchantId: ownerId,
         title: campaign.title,
         targetAccount: campaign.target_account,
+        audit_strategy: campaign.audit_strategy,
         video_url: campaign.video_url,
         caption_text: campaign.caption_text,
         city: geo.enabled ? geo.target_city : "Anywhere",

@@ -37,6 +37,7 @@ export default function MerchantConsole() {
   const [caption, setCaption] = useState(""); // 引流带货文案（caption_text）
   const [totalSlots, setTotalSlots] = useState("");
   const [payoutRate, setPayoutRate] = useState("");
+  const [auditHours, setAuditHours] = useState("48"); // 人工核验超时自动放行窗口（小时），默认 48h
   const [publishState, setPublishState] = useState("idle");
   const [publishMsg, setPublishMsg] = useState("");
   const [lastCampaignId, setLastCampaignId] = useState(null);
@@ -150,6 +151,7 @@ export default function MerchantConsole() {
           target_hashtags: [],
           geotargeting_config: { enabled: false },
           escrow_summary: { total_slots: slots, payout_rate: rate, platform_fee: 1 },
+          audit_strategy: { mode: "manual", auto_approve_after_hours: Number(auditHours) > 0 ? Number(auditHours) : 48 },
         }),
       });
       const data = await res.json();
@@ -356,6 +358,23 @@ export default function MerchantConsole() {
                 placeholder="e.g. 3.00"
                 className="mt-1 w-full rounded-xl bg-slate-800 border border-gray-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
+            </div>
+
+            {/* 人工核验超时自动放行窗口（小时）：商家不点核验时，到期系统自动放行分账 */}
+            <div className="sm:col-span-2">
+              <label className="block text-sm text-slate-300">Auto-approve window (hours)</label>
+              <p className="text-xs text-slate-500">核验超时自动放行窗口（小时）——商家不点核验，到期系统自动结算</p>
+              <input
+                type="number"
+                min="1"
+                value={auditHours}
+                onChange={(e) => setAuditHours(e.target.value)}
+                placeholder="e.g. 48"
+                className="mt-1 w-full rounded-xl bg-slate-800 border border-gray-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+              <p className="mt-1 text-xs text-slate-500">
+                老外提交完工链接后，此窗口内你可手动拒付；超时未操作 → 自动放行（老外 +$3 / 平台 +$1）。
+              </p>
             </div>
           </div>
 
