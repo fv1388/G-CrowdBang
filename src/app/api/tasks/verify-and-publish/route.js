@@ -109,12 +109,87 @@ export async function POST(request) {
     const body = await request.json();
     const { campaignId, workerId } = body || {};
 
+    // 完工对账字段（可选）：老外手动发布后回填的公开链接 + 截图文件名
+    const publishedVideoUrl = body?.published_video_url ?? null;
+    const screenshotName = body?.screenshot_filename ?? null;
+
     // 兼容两种载荷：直传 latitude/longitude，或 TaskButton 的 telemetry 包裹 { latitude, longitude, accuracy }
     const latitude = body?.latitude ?? body?.telemetry?.latitude;
     const longitude = body?.longitude ?? body?.telemetry?.longitude;
     const accuracy = body?.accuracy ?? body?.telemetry?.accuracy ?? 0;
 
-    if (!campaignId || !workerId || latitude === undefined || longitude === undefined) {
+    if (!campaignId || !workerId) {
+      return NextResponse.json({ error: "MISSING_FIELDS" }, { status: 400 });
+    }
+
+    // 【完工对账提交分支】携带公开链接、且未重新上报坐标：
+    // 对 TaskButton 已建出的 PENDING_AUDIT 单做补充更新（写入 published_video_url + 截图），
+    // 不重复建单、不再扣减名额、跳过重复 GPS 校验。
+    if (publishedVideoUrl && latitude === undefined) {
+      const nowIso = new Date().toISOString();
+      if (firebaseAvailable) {
+        const q = db
+          .collection("submissions")
+          .where("campaign_id", "==", campaignId)
+          .where("worker_id", "==", workerId)
+          .limit(5);
+        const snap = await q.get();
+        const match = snap.docs.find(
+          (d) => d.data()?.audit_metadata?.verification_status === "PENDING_AUDIT"
+        );
+        if (!match) {
+          return NextResponse.json(
+            { error: "CLAIM_NOT_FOUND", message: "Run the hardware check first (Publish Task)." },
+            { status: 400 }
+          );
+        }
+        await match.ref.update({
+          "audit_metadata.published_video_url": publishedVideoUrl,
+          "audit_metadata.screenshot_filename": screenshotName || null,
+          submitted_at: nowIso,
+        });
+        return NextResponse.json(
+          { submissionId: match.id, status: "PENDING_AUDIT", source: "firestore", updated: true },
+          { status: 200 }
+        );
+      } else {
+        let foundId = null;
+        let existing = null;
+        for (const [id, s] of mockSubmissions.entries()) {
+          if (
+            s.campaign_id === campaignId &&
+            s.worker_id === workerId &&
+            s.audit_metadata?.verification_status === "PENDING_AUDIT"
+          ) {
+            foundId = id;
+            existing = s;
+            break;
+          }
+        }
+        if (!foundId) {
+          return NextResponse.json(
+            { error: "CLAIM_NOT_FOUND", message: "Run the hardware check first (Publish Task)." },
+            { status: 400 }
+          );
+        }
+        const updated = {
+          ...existing,
+          audit_metadata: {
+            ...(existing.audit_metadata || {}),
+            published_video_url: publishedVideoUrl,
+            ...(screenshotName ? { screenshot_filename: screenshotName } : {}),
+          },
+          submitted_at: nowIso,
+        };
+        putSubmission(foundId, updated);
+        return NextResponse.json(
+          { submissionId: foundId, status: "PENDING_AUDIT", source: "mock", updated: true },
+          { status: 200 }
+        );
+      }
+    }
+
+    if (latitude === undefined || longitude === undefined) {
       return NextResponse.json({ error: "MISSING_FIELDS" }, { status: 400 });
     }
 
