@@ -39,9 +39,9 @@ if (
   firebaseAvailable = false;
 }
 
-// 归属：生产环境应从认证会话取当前商户 uid；此处以环境变量作服务端兜底示意。
-function currentMerchantId() {
-  return process.env.MERCHANT_ID ?? "mch_placeholder";
+// 归属：优先取传入的商户 uid（前端鉴权会话），环境变量作服务端兜底示意。
+function currentMerchantId(override) {
+  return override || process.env.MERCHANT_ID ?? "mch_placeholder";
 }
 
 // ---- 本地 mock 任务（无 firebase-admin 时供商户看板演示）----
@@ -58,9 +58,11 @@ const MOCK_MERCHANT_CAMPAIGNS = [
   },
 ];
 
-export async function GET() {
+export async function GET(request) {
   try {
-    const merchantId = currentMerchantId();
+    // 商户归属：优先 query 中的 merchantId（前端鉴权会话 UID）
+    const url = new URL(request.url);
+    const merchantId = url.searchParams.get("merchantId") || currentMerchantId();
 
     if (!firebaseAvailable) {
       // 返回商户钱包余额 + 该商户任务
@@ -77,13 +79,13 @@ export async function GET() {
     if (mSnap.exists) balanceUsd = mSnap.data()?.balance_usd || 0;
 
     // 仅返回该商户自己的任务（归属过滤）
+    // 说明：去掉 orderBy，改用 JS 倒序，避免依赖 Firestore 复合索引（where + orderBy 需建索引，缺失会抛 FAILED_PRECONDITION → 500）
     const snap = await db.collection("campaigns")
       .where("owner_merchant_id", "==", merchantId)
-      .orderBy("created_at", "desc")
       .limit(50)
       .get();
 
-    const campaigns = snap.docs.map((doc) => {
+    let campaigns = snap.docs.map((doc) => {
       const d = doc.data();
       const geo = d.geotargeting_config || {};
       const escrow = d.escrow_summary || {};
@@ -99,6 +101,9 @@ export async function GET() {
         created_at: d.created_at || null,
       };
     });
+
+    // 按创建时间倒序（服务端排序，规避复合索引）
+    campaigns.sort((a, b) => ((b.created_at || "") < (a.created_at || "") ? -1 : 1));
 
     return NextResponse.json({ campaigns, balance_usd: balanceUsd, source: "firestore" }, { status: 200 });
   } catch (err) {
