@@ -75,8 +75,29 @@ async function windowHoursFor(campaignId) {
   return Number(h) > 0 ? Number(h) : DEFAULT_WINDOW_HOURS;
 }
 
+/** 读取任务的分账配置（达人佣金 + 平台费），不再写死 $3/$1。 */
+async function resolveCampaignPayout(campaignId) {
+  if (firebaseAvailable) {
+    try {
+      const snap = await db.collection("campaigns").doc(campaignId).get();
+      if (snap.exists) {
+        const esc = snap.data()?.escrow_summary || {};
+        const p = Number(esc.payout_rate) > 0 ? Number(esc.payout_rate) : 3.0;
+        const f = Number(esc.platform_fee) >= 0 ? Number(esc.platform_fee) : 1.0;
+        return { workerPayout: p, platformFee: f };
+      }
+    } catch (_) { /* 读不到回退默认 */ }
+    return { workerPayout: WORKER_PAYOUT, platformFee: PLATFORM_FEE };
+  }
+  const camp = mockCampaigns.get(campaignId);
+  const p = Number(camp?.payout) > 0 ? Number(camp.payout) : WORKER_PAYOUT;
+  const f = Number(camp?.platformFee) >= 0 ? Number(camp.platformFee) : PLATFORM_FEE;
+  return { workerPayout: p, platformFee: f };
+}
+
 /** 放行一笔已超时的对账单（Firestore 事务原子 / mock 直接变更），与 manual-verify 分账一致。 */
 async function settleAuto(submissionId, data) {
+  const { workerPayout, platformFee } = await resolveCampaignPayout(data.campaign_id);
   if (firebaseAvailable) {
     const subRef = db.collection("submissions").doc(submissionId);
     await db.runTransaction(async (tx) => {
@@ -93,9 +114,9 @@ async function settleAuto(submissionId, data) {
         updated_at: new Date().toISOString(),
       });
       const workerRef = db.collection("users").doc(d.worker_id);
-      tx.set(workerRef, { balance_usd: FieldValue.increment(WORKER_PAYOUT) }, { merge: true });
+      tx.set(workerRef, { balance_usd: FieldValue.increment(workerPayout) }, { merge: true });
       const platformRef = db.collection("platform_accounts").doc("official_profit");
-      tx.set(platformRef, { service_fee_balance_usd: FieldValue.increment(PLATFORM_FEE) }, { merge: true });
+      tx.set(platformRef, { service_fee_balance_usd: FieldValue.increment(platformFee) }, { merge: true });
     });
     return;
   }
@@ -109,8 +130,8 @@ async function settleAuto(submissionId, data) {
     payout_status: "paid",
     updated_at: new Date().toISOString(),
   });
-  mockUsers.set(m.worker_id, { balance_usd: (mockUsers.get(m.worker_id)?.balance_usd || 0) + WORKER_PAYOUT });
-  mockPlatform.service_fee_balance_usd += PLATFORM_FEE;
+  mockUsers.set(m.worker_id, { balance_usd: (mockUsers.get(m.worker_id)?.balance_usd || 0) + workerPayout });
+  mockPlatform.service_fee_balance_usd += platformFee;
 }
 
 export async function GET(request) {

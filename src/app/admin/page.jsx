@@ -32,7 +32,9 @@ export default function MerchantConsole() {
   const [balance, setBalance] = useState(0);
 
   // ---- 发布悬赏（本地视频上传 · 零绑定手动分发）----
-  const [targetAccount, setTargetAccount] = useState(""); // 商户手动输入的目标发布账号（如 @fv138888）
+  const [targetAccount, setTargetAccount] = useState(""); // 可选：目标发布账号（如 @fv138888；UGC 模式不再强制）
+  const [brandHashtag, setBrandHashtag] = useState(""); // 品牌话题（UGC：老外创作时带上，统一裂变流量）
+  const [contentBrief, setContentBrief] = useState(""); // 内容要求/创作指引（UGC 核心）
   const [videoFile, setVideoFile] = useState(null); // 选中的本地 mp4 文件对象
   const [caption, setCaption] = useState(""); // 引流带货文案（caption_text）
   const [totalSlots, setTotalSlots] = useState("");
@@ -42,6 +44,11 @@ export default function MerchantConsole() {
   const [publishMsg, setPublishMsg] = useState("");
   const [lastCampaignId, setLastCampaignId] = useState(null);
   const fileInputRef = useRef(null);
+
+  // ---- 订阅收费（方案 B：固定月订阅）----
+  const [planState, setPlanState] = useState("idle"); // idle|submitting|success|error
+  const [planMsg, setPlanMsg] = useState("");
+  const [activePlan, setActivePlan] = useState(null);
 
   // ---- 挂载时加载商户可用托管余额（GET /api/merchant/balance）----
   // 修复：充值后的余额存在 merchants/<merchantId>.balance_usd，页面初始加载需主动拉取，
@@ -102,6 +109,41 @@ export default function MerchantConsole() {
   // 本地选中的视频文件名（默认锁定 888.mp4，便于本地 /assets 直接播放）
   const selectedVideoName = videoFile?.name || "888.mp4";
 
+  // ---- 激活订阅套餐 → POST /api/subscription/create（方案 B 平台收入来源之一）----
+  const activatePlan = async (plan) => {
+    if (!merchantId) {
+      setPlanMsg("You must be signed in as a merchant.");
+      setPlanState("error");
+      return;
+    }
+    setPlanState("submitting");
+    setPlanMsg("");
+    try {
+      const res = await fetch("/api/subscription/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          merchantId,
+          plan,
+          paymentOrderId: plan === "pro" || plan === "enterprise" ? `paypal_order_${Date.now()}` : undefined,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setPlanMsg(`Subscription failed (${data?.error || res.status}).`);
+        setPlanState("error");
+        return;
+      }
+      setActivePlan(data.plan_name);
+      setPlanMsg(`✅ ${data.plan_name} active — renews ${data.renews_at.slice(0, 10)}. 订阅已生效。`);
+      setPlanState("success");
+    } catch (err) {
+      console.error("[admin] subscription failed", err);
+      setPlanState("error");
+      setPlanMsg("Network error.");
+    }
+  };
+
   // 发布悬赏并托管资金 → POST /api/campaigns/create（携带商户真实 UID）
   const publishCampaign = async () => {
     const slots = Number(totalSlots);
@@ -121,12 +163,8 @@ export default function MerchantConsole() {
       setPublishState("error");
       return;
     }
-    // 零绑定模式：目标发布账号必须由商户手动输入，缺失则拦截发布
-    if (!targetAccount.trim()) {
-      setPublishMsg("Enter the target TikTok account (e.g. @fv138888). 请输入目标发布账号。");
-      setPublishState("error");
-      return;
-    }
+    // UGC 模式：目标发布账号为可选（不再强制）；老外发到自己的账号，按品牌话题/内容要求创作。
+    // 建议填写品牌话题，以统一流量打点与对账。
 
     setPublishState("submitting");
     setPublishMsg("Uploading video asset... 正在上传视频素材...");
@@ -148,8 +186,7 @@ export default function MerchantConsole() {
         // 未选文件时回退到固定 demo（仅占位；商户实际应选择本地视频上传）
         videoUrl = `/assets/${selectedVideoName}`;
       }
-      // 将目标账号注入文案开头，使老外端任务卡能直接看到指定发布账号
-      const captionText = `${targetAccount} — ${caption.trim()}`;
+      const captionText = caption.trim();
       // title 由文案首行截断自动生成（后端必填）
       const title = caption.trim().split("\n")[0].slice(0, 40) || `${selectedVideoName} Bounty`;
 
@@ -161,7 +198,9 @@ export default function MerchantConsole() {
           title,
           video_url: videoUrl,
           caption_text: captionText,
-          target_account: targetAccount, // 商户手动输入的目标发布号（如 @fv138888），后端记账 + 老外端显示
+          target_account: targetAccount, // 可选目标发布号（UGC 模式非核心锚点）
+          brand_hashtag: brandHashtag, // 品牌话题（UGC：老外创作时带上）
+          content_brief: contentBrief, // 内容要求/创作指引（UGC 核心）
           target_hashtags: [],
           geotargeting_config: { enabled: false },
           escrow_summary: { total_slots: slots, payout_rate: rate, platform_fee: 1 },
@@ -293,30 +332,95 @@ export default function MerchantConsole() {
           )}
         </div>
 
+        {/* 订阅收费卡（方案 B：平台固定月订阅） */}
+        <div className="mt-6 rounded-2xl border border-gray-800 bg-gray-900 p-6 shadow-sm">
+          <h2 className="font-semibold text-slate-200">Subscription Plans</h2>
+          <p className="text-xs text-slate-500">订阅套餐（平台固定月费收入之一）</p>
+          <p className="mt-1 text-sm text-slate-400">
+            {activePlan
+              ? <>Active plan: <strong className="text-emerald-400">{activePlan}</strong>. 当前生效套餐。</>
+              : "Pick a plan to activate recurring access and priority distribution."}
+          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <button
+              onClick={() => activatePlan("starter")}
+              disabled={planState === "submitting"}
+              className="rounded-xl border border-gray-700 bg-slate-800 p-4 text-left hover:border-purple-500 disabled:opacity-50 transition-all"
+            >
+              <p className="font-semibold text-slate-100">Starter</p>
+              <p className="text-xs text-slate-500">免费 · 10 tasks/月</p>
+              <p className="mt-2 text-sm font-bold text-slate-200">$0</p>
+            </button>
+            <button
+              onClick={() => activatePlan("pro")}
+              disabled={planState === "submitting"}
+              className="rounded-xl border border-purple-600 bg-purple-900/20 p-4 text-left hover:bg-purple-900/40 disabled:opacity-50 transition-all"
+            >
+              <p className="font-semibold text-purple-300">Pro</p>
+              <p className="text-xs text-slate-400">无限任务 · 优先分发</p>
+              <p className="mt-2 text-sm font-bold text-purple-300">$99 / 月</p>
+            </button>
+            <button
+              onClick={() => activatePlan("enterprise")}
+              disabled={planState === "submitting"}
+              className="rounded-xl border border-gray-700 bg-slate-800 p-4 text-left hover:border-purple-500 disabled:opacity-50 transition-all"
+            >
+              <p className="font-semibold text-slate-100">Enterprise</p>
+              <p className="text-xs text-slate-500">专属客服 · 自定义核验窗口</p>
+              <p className="mt-2 text-sm font-bold text-slate-200">$299 / 月</p>
+            </button>
+          </div>
+          {planState === "success" && (
+            <p className="mt-3 rounded-xl bg-emerald-950 border border-emerald-800 p-3 text-sm text-emerald-400">{planMsg}</p>
+          )}
+          {planState === "error" && (
+            <p className="mt-3 rounded-xl bg-rose-950 border border-rose-800 p-3 text-sm text-rose-400">{planMsg}</p>
+          )}
+        </div>
+
         {/* 发布悬赏表单（本地视频上传） */}
         <div className="mt-6 rounded-2xl border border-gray-800 bg-gray-900 p-6 shadow-sm">
           <h2 className="font-semibold text-slate-200">Publish &amp; Deposit Escrow</h2>
           <p className="text-xs text-slate-500">发布悬赏并托管资金</p>
           <p className="mt-1 text-sm text-slate-400">
-            Funds (slots × (payout + $1 fee)) are held in escrow until work is verified.
+            Funds (slots × (payout + platform fee)) are held in escrow until work is verified.
           </p>
-          <p className="text-xs text-slate-500">资金（名额 ×（佣金 + $1 平台费））在作品核验前托管冻结。</p>
+          <p className="text-xs text-slate-500">资金（名额 ×（佣金 + 平台服务费））在作品核验前托管冻结。</p>
 
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            {/* 1) 目标账号手动输入框（零绑定：商户手输目标发布号，如 @fv138888） */}
+            {/* 1) 品牌话题 + 内容要求 + 目标账号（UGC 模式：前两者为核心，目标账号可选） */}
             <div className="sm:col-span-2">
-              <label className="block text-sm text-slate-300">Target TikTok Account</label>
-              <p className="text-xs text-slate-500">目标发布账号（手动输入，无需任何官方绑定）</p>
+              <label className="block text-sm text-slate-300">Brand Hashtag</label>
+              <p className="text-xs text-slate-500">品牌话题（老外在自己账号创作时带上，统一流量打点，如 #HomeTech）</p>
+              <input
+                type="text"
+                value={brandHashtag}
+                onChange={(e) => setBrandHashtag(e.target.value)}
+                placeholder="例如: #HomeTech"
+                className="mt-1 w-full rounded-xl bg-slate-800 border border-gray-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-sm text-slate-300">Content Brief</label>
+              <p className="text-xs text-slate-500">内容要求 / 创作指引（告诉老外拍什么、怎么拍，让内容真实自然，英文）</p>
+              <textarea
+                value={contentBrief}
+                onChange={(e) => setContentBrief(e.target.value)}
+                placeholder="e.g. Film a real unboxing of this gadget on your own account, show it in your daily setup, and add #HomeTech. Keep it honest and natural."
+                rows={3}
+                className="mt-1 w-full rounded-xl bg-slate-800 border border-gray-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-sm text-slate-300">Target TikTok Account（可选）</label>
+              <p className="text-xs text-slate-500">可选：目标发布账号（如 @fv138888）。不填时老外直接发布到自己的账号即可。</p>
               <input
                 type="text"
                 value={targetAccount}
                 onChange={(e) => setTargetAccount(e.target.value)}
-                placeholder="例如: @fv138888"
+                placeholder="可选: @fv138888"
                 className="mt-1 w-full rounded-xl bg-slate-800 border border-gray-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
-              <p className="mt-1 text-xs text-slate-500">
-                老外将把视频手动发布到该账号，作为「手动零绑定分发」的核验对账锚点。
-              </p>
             </div>
 
             {/* 2) 本地视频上传控件 */}
@@ -388,7 +492,7 @@ export default function MerchantConsole() {
                 className="mt-1 w-full rounded-xl bg-slate-800 border border-gray-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
               <p className="mt-1 text-xs text-slate-500">
-                老外提交完工链接后，此窗口内你可手动拒付；超时未操作 → 自动放行（老外 +$3 / 平台 +$1）。
+                老外提交完工链接后，此窗口内你可手动拒付；超时未操作 → 系统自动放行分账（按任务设定的佣金与服务费）。
               </p>
             </div>
           </div>

@@ -60,7 +60,7 @@ function validateEscrow(escrow) {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { title, video_url, caption_text, target_hashtags, geotargeting_config, escrow_summary, merchantId, target_account, target_tiktok_account, audit_strategy, audit_auto_approve_hours } = body || {};
+    const { title, video_url, caption_text, target_hashtags, geotargeting_config, escrow_summary, merchantId, target_account, target_tiktok_account, audit_strategy, audit_auto_approve_hours, brand_hashtag, content_brief } = body || {};
 
     // 人工核验超时自动放行窗口（小时）：商户可设，未设则默认 48h
     const autoApproveHours = Number(audit_strategy?.auto_approve_after_hours ?? audit_auto_approve_hours);
@@ -85,7 +85,9 @@ export async function POST(request) {
       title,
       video_url: video_url ?? "",
       caption_text: caption_text ?? "",
-      target_account: target_tiktok_account || target_account || "", // 商户手动输入的零绑定目标发布号（如 @fv138888）
+      target_account: target_tiktok_account || target_account || "", // 目标发布号（可选；UGC 模式不再作为核心必填）
+      brand_hashtag: brand_hashtag || "", // 品牌话题（UGC 模式核心：老外创作时带上品牌话题/链接）
+      content_brief: content_brief || "", // 内容要求/创作指引（UGC 模式核心）
       audit_strategy: auditStrategy, // 人工核验 + 超时自动放行窗口（默认 48h）
       target_hashtags: Array.isArray(target_hashtags) ? target_hashtags : [],
       geotargeting_config: {
@@ -159,6 +161,9 @@ export async function POST(request) {
         merchantId: ownerId,
         title: campaign.title,
         targetAccount: campaign.target_account,
+        brandHashtag: campaign.brand_hashtag,
+        contentBrief: campaign.content_brief,
+        platformFee: escrow.platform_fee ?? 1.0,
         audit_strategy: campaign.audit_strategy,
         video_url: campaign.video_url,
         caption_text: campaign.caption_text,

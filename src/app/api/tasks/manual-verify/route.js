@@ -72,6 +72,30 @@ async function resolveOwnerMerchantId(submission) {
   return camp?.merchantId ?? null;
 }
 
+/**
+ * 读取任务的分账配置（达人单条佣金 + 平台单条服务费）。
+ * 生产：campaign.escrow_summary.payout_rate / platform_fee；
+ * mock：list-shaped 的 payout / platformFee。缺省回退 $3 / $1。
+ */
+async function resolveCampaignPayout(campaignId) {
+  if (firebaseAvailable) {
+    try {
+      const snap = await db.collection("campaigns").doc(campaignId).get();
+      if (snap.exists) {
+        const esc = snap.data()?.escrow_summary || {};
+        const p = Number(esc.payout_rate) > 0 ? Number(esc.payout_rate) : 3.0;
+        const f = Number(esc.platform_fee) >= 0 ? Number(esc.platform_fee) : 1.0;
+        return { workerPayout: p, platformFee: f };
+      }
+    } catch (_) { /* 读不到回退默认 */ }
+    return { workerPayout: WORKER_PAYOUT, platformFee: PLATFORM_FEE };
+  }
+  const camp = mockCampaigns.get(campaignId);
+  const p = Number(camp?.payout) > 0 ? Number(camp.payout) : WORKER_PAYOUT;
+  const f = Number(camp?.platformFee) >= 0 ? Number(camp.platformFee) : PLATFORM_FEE;
+  return { workerPayout: p, platformFee: f };
+}
+
 export async function POST(request) {
   try {
     const { submissionId, merchantId, decision, note } = await request.json();
@@ -138,6 +162,8 @@ export async function POST(request) {
     }
 
     // ---- 决策 B：approve（放行）→ 原子托管分账 ----
+    // 分账按任务设定（达人佣金 + 平台服务费），不再写死 $3/$1
+    const { workerPayout, platformFee } = await resolveCampaignPayout(submission.campaign_id);
     if (firebaseAvailable) {
       await db.runTransaction(async (tx) => {
         const snap = await tx.get(subRef);
@@ -156,15 +182,15 @@ export async function POST(request) {
           updated_at: nowIso,
         });
 
-        // 佣金：$3.00 划入接单人可用提现余额（users/<worker_id>.balance_usd）
+        // 佣金：达人佣金划入接单人可用提现余额（users/<worker_id>.balance_usd）
         const workerRef = db.collection("users").doc(data.worker_id);
-        tx.set(workerRef, { balance_usd: FieldValue.increment(WORKER_PAYOUT) }, { merge: true });
+        tx.set(workerRef, { balance_usd: FieldValue.increment(workerPayout) }, { merge: true });
 
-        // 平台纯技术服务费：$1.00 计入总部官方利润账户
+        // 平台服务费：计入总部官方利润账户
         const platformRef = db.collection("platform_accounts").doc("official_profit");
         tx.set(
           platformRef,
-          { service_fee_balance_usd: FieldValue.increment(PLATFORM_FEE) },
+          { service_fee_balance_usd: FieldValue.increment(platformFee) },
           { merge: true }
         );
       });
@@ -186,15 +212,15 @@ export async function POST(request) {
         payout_status: "paid",
         updated_at: nowIso,
       });
-      const workerBalance = (mockUsers.get(m.worker_id)?.balance_usd || 0) + WORKER_PAYOUT;
+      const workerBalance = (mockUsers.get(m.worker_id)?.balance_usd || 0) + workerPayout;
       mockUsers.set(m.worker_id, { balance_usd: workerBalance });
-      mockPlatform.service_fee_balance_usd += PLATFORM_FEE;
+      mockPlatform.service_fee_balance_usd += platformFee;
     }
 
     return NextResponse.json(
       {
         result: "verified",
-        payout: { worker_usd: WORKER_PAYOUT, platform_fee_usd: PLATFORM_FEE },
+        payout: { worker_usd: workerPayout, platform_fee_usd: platformFee },
         source: firebaseAvailable ? "firestore" : "mock",
       },
       { status: 200 }

@@ -17,8 +17,7 @@ import { useEffect, useState } from "react";
 import { useAuthSession } from "@/database/auth";
 import DemoLoginCard from "@/app/components/DemoLoginCard";
 
-// 指定官方发布账号（目标品牌号）+ 本地静态素材资产桶（mock 阶段）
-const TARGET_PROFILE = "@fv138888";
+// 本地静态素材资产桶（mock 阶段）
 const LOCAL_ASSET_VIDEO = "http://localhost:3000/assets/888.mp4";
 
 // 是否处于本地 mock（hostname 判定；线上回退真实任务视频）
@@ -195,9 +194,9 @@ export default function TaskHallPage() {
   };
 
   const flow = [
-    { step: "Browse Available Bounties", body: "Pick a task from the live board — each shows the source video, target city, and the $3.00 payout." },
-    { step: "Pass the Hardware GPS Check", body: "When you claim a task, your device runs a standard GPS check (navigator.geolocation) to confirm you're submitting from the task area." },
-    { step: "Publish & Get Verified", body: "Post your video, submit the link, and our server verifies it's public and the claim is consistent — then your $3.00 is released to your balance." },
+    { step: "Browse Brand Briefs", body: "Pick a task from the live board — each shows the content brief, the brand hashtag, and the payout for posting on your own account." },
+    { step: "Pass the Hardware GPS Check", body: "When you claim a task, your device runs a standard GPS check (navigator.geolocation) to confirm you're submitting from the US." },
+    { step: "Create, Post & Get Verified", body: "Film your own authentic video on your account, add the brand hashtag, submit the link, and our audit verifies it — then your payout is released to your balance." },
   ];
 
   // ---- 挂载中 ----
@@ -245,13 +244,13 @@ export default function TaskHallPage() {
       <section className="border-b border-slate-800">
         <div className="max-w-6xl mx-auto px-6 py-16 text-center">
           <span className="inline-block rounded-full bg-emerald-500/15 px-4 py-1 text-xs font-medium text-emerald-300">
-            Earn $3 per task · No experience needed
+            Earn per task · Create on your own account · No experience needed
           </span>
           <h1 className="mt-5 text-3xl sm:text-5xl font-extrabold tracking-tight">
             Turn your free time into <span className="text-emerald-400">cash</span>
           </h1>
           <p className="mt-5 text-lg text-slate-400 max-w-2xl mx-auto leading-relaxed">
-            Browse real crowdsourcing tasks from brands, verify your location with your phone's
+            Browse real crowdsourcing tasks from brands, verify your location with your phone&apos;s
             hardware GPS, and get paid after a transparent audit. Work from anywhere in the US,
             whenever you have 10 free minutes.
           </p>
@@ -262,25 +261,25 @@ export default function TaskHallPage() {
         </div>
       </section>
 
-      {/* ⭐ 指定发布账号 Banner（本地真机通联核心指引） */}
+      {/* ⭐ 品牌 UGC 创作指引 Banner（零绑定众包：发到自己账号，带品牌话题） */}
       <section className="max-w-6xl mx-auto px-6 pt-8">
         <div className="rounded-2xl border border-cyan-500/30 bg-gradient-to-r from-slate-900 via-cyan-950/40 to-slate-900 p-6 shadow-[0_0_30px_rgba(34,211,238,0.15)]">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center gap-4">
-              <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-cyan-500/15 text-3xl">🎯</span>
+              <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-cyan-500/15 text-3xl">🎥</span>
               <div>
-                <p className="text-xs uppercase tracking-widest text-cyan-400">Target Deployment Profile</p>
-                <p className="mt-1 text-2xl font-extrabold text-white">{TARGET_PROFILE}</p>
+                <p className="text-xs uppercase tracking-widest text-cyan-400">Create Authentic UGC</p>
+                <p className="mt-1 text-2xl font-extrabold text-white">Post on your own account</p>
               </div>
             </div>
             <p className="max-w-md text-sm leading-relaxed text-slate-300">
-              Please make sure your phone&apos;s TikTok app is signed in to (or switched to) this
-              brand profile before publishing below. <span className="text-cyan-300">Only posts on {TARGET_PROFILE} will pass the audit.</span>
+              Film a real, honest video of your own, post it on <b className="text-cyan-300">your own TikTok account</b>,
+              and include the brand hashtag from the task. No brand account login needed.
             </p>
           </div>
           <div className="mt-4 grid gap-3 text-xs text-slate-400 sm:grid-cols-3">
-            <span className="rounded-lg bg-slate-800/60 px-3 py-2">1 · Sign in to <b className="text-white">{TARGET_PROFILE}</b> in TikTok App</span>
-            <span className="rounded-lg bg-slate-800/60 px-3 py-2">2 · Publish the asset manually with your real device</span>
+            <span className="rounded-lg bg-slate-800/60 px-3 py-2">1 · Read the content brief &amp; brand hashtag</span>
+            <span className="rounded-lg bg-slate-800/60 px-3 py-2">2 · Film &amp; post your own authentic video on your account</span>
             <span className="rounded-lg bg-slate-800/60 px-3 py-2">3 · Paste the public link below to get paid</span>
           </div>
         </div>
@@ -346,10 +345,18 @@ export default function TaskHallPage() {
                 {t.caption_text && (
                   <p className="mt-1 text-sm leading-relaxed text-slate-400">{t.caption_text}</p>
                 )}
+                {t.content_brief && (
+                  <p className="mt-2 rounded-lg bg-slate-800/60 border border-slate-700 px-3 py-2 text-xs leading-relaxed text-slate-300">
+                    <span className="font-semibold text-cyan-300">Content brief:</span> {t.content_brief}
+                  </p>
+                )}
+                {t.brand_hashtag && (
+                  <p className="mt-2 inline-block rounded-full bg-fuchsia-900/30 border border-fuchsia-600/40 px-3 py-1 text-xs font-semibold text-fuchsia-300">{t.brand_hashtag}</p>
+                )}
 
                 <div className="mt-3 flex items-center justify-between text-sm">
                   <span className="rounded-full bg-indigo-900/40 px-3 py-1 text-indigo-300">📍 {t.city}, {t.state}</span>
-                  <span className="rounded-full bg-emerald-500/10 px-3 py-1 font-bold text-emerald-300">$3.00 USD Verified Payout</span>
+                  <span className="rounded-full bg-emerald-500/10 px-3 py-1 font-bold text-emerald-300">${(Number(t.payout ?? 3)).toFixed(2)} USD Verified Payout</span>
                 </div>
 
                 {/* 下载/复制/App 唤醒（手动真机发布指引） */}
@@ -371,12 +378,12 @@ export default function TaskHallPage() {
                 <div className="mt-4 rounded-xl border border-slate-700 bg-slate-950 p-3">
                   <p className="text-xs font-semibold text-slate-300">Proof of completion / 完工证明对账单</p>
                   <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
-                    Published on {TARGET_PROFILE}? Paste the public link and attach a timestamped TikTok success screenshot, then submit for audit.
+                    Posted on your own account? Paste the public link and attach a timestamped TikTok success screenshot, then submit for audit.
                   </p>
                   <input
                     value={c.url || ""}
                     onChange={(e) => setCompletionFor(t.id, { url: e.target.value })}
-                    placeholder="https://www.tiktok.com/@fv138888/video/... (public link)"
+                    placeholder="https://www.tiktok.com/@your_account/video/... (public link)"
                     className="mt-2 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                   <input
