@@ -9,7 +9,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { signUpWithEmail, firebaseConfigReady } from "@/database/auth";
+import { signUpWithEmail, signInWithEmail, firebaseConfigReady } from "@/database/auth";
 import { GoogleLoginWidget } from "@/app/components/GoogleLoginWidget";
 
 function isLocalhost() {
@@ -35,14 +35,30 @@ export default function LoginPage() {
     return m === "register" ? "register" : "signin";
   });
 
-  // 邮箱密码登录/注册
+  // 邮箱密码登录/注册（真实模式）
+  //  - mode=signin   → signInWithEmail（登录）
+  //  - mode=register → signUpWithEmail（注册）；若邮箱已被占用（auth/email-already-in-use）自动转登录
   const doLogin = async () => {
     if (!email || !pwd) {
       setMsg("Enter email and password. / 请输入邮箱和密码。");
       return;
     }
     try {
-      const s = await signUpWithEmail(email, pwd, role);
+      let s;
+      if (mode === "register") {
+        try {
+          s = await signUpWithEmail(email, pwd, role);
+        } catch (e) {
+          if (e?.code === "auth/email-already-in-use") {
+            // 账号已存在 → 自动切换为登录，避免 "注册失败" 的假死体验
+            s = await signInWithEmail(email, pwd);
+          } else {
+            throw e;
+          }
+        }
+      } else {
+        s = await signInWithEmail(email, pwd);
+      }
       const target = s.role?.toUpperCase() === "MERCHANT"
         ? "/admin"
         : s.role?.toUpperCase() === "WORKER"
@@ -51,7 +67,13 @@ export default function LoginPage() {
       window.location.href = target;
     } catch (e) {
       console.error("[login] sign-in failed", e);
-      setMsg("Sign-in failed. / 登录失败，请重试。");
+      setMsg(
+        e?.code === "auth/wrong-password" || e?.code === "auth/invalid-credential" || e?.code === "auth/invalid-login-credentials"
+          ? "Incorrect email or password. / 邮箱或密码错误。"
+          : e?.code === "auth/email-already-in-use"
+            ? "Account already exists, please sign in. / 账号已存在，请直接登录。"
+            : "Sign-in failed. / 登录失败，请重试。"
+      );
     }
   };
 
