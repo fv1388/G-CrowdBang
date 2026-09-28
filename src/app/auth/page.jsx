@@ -121,8 +121,22 @@ export default function AuthPage() {
       console.log("[auth] google ok", s);
       window.location.href = routeByRole(s?.role);
     } catch (err) {
+      // 按 Firebase Auth 错误码给出具体原因
+      const map = {
+        "auth/operation-not-allowed":
+          "Google sign-in is not enabled yet in Firebase Auth. 谷歌登录尚未在 Firebase 启用。",
+        "auth/unauthorized-domain":
+          "This domain is not authorized for Google sign-in. 当前域名未授权谷歌登录。",
+        "auth/network-request-failed":
+          "Network issue reaching Google. 网络无法连接谷歌。",
+        "auth/popup-closed-by-user":
+          "Popup closed before sign-in completed. 授权弹窗已关闭。",
+        "auth/popup-blocked":
+          "Popup blocked by browser. 浏览器拦截了授权弹窗。",
+      };
       setServerError(
-        err?.message ||
+        map[err?.code] ||
+          err?.message ||
           "Google sign-in failed. Please check your connection. / 谷歌登录失败，请检查连接。"
       );
     } finally {

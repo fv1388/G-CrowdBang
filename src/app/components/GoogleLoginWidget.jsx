@@ -27,7 +27,22 @@ export function GoogleLoginWidget({ role = "WORKER", onDone }) {
       window.location.href = target;
     } catch (err) {
       console.error("[GoogleLoginWidget] sign-in failed", err);
-      alert("登录失败，请检查浏览器连接状态 / Sign-in failed, check your connection.");
+      // 根据 Firebase Auth 错误码给出具体原因，避免笼统"检查连接"误导
+      const map = {
+        "auth/operation-not-allowed":
+          "Google sign-in is not enabled yet in Firebase Auth. 谷歌登录尚未在 Firebase 启用（Authentication → Sign-in method → Google）。",
+        "auth/unauthorized-domain":
+          "This domain is not authorized for Google sign-in. 当前域名未授权谷歌登录（需在 Firebase 添加授权域名）。",
+        "auth/network-request-failed":
+          "Network issue reaching Google. 网络无法连接谷歌，请检查连接。",
+        "auth/popup-closed-by-user":
+          "Popup closed before sign-in completed. 授权弹窗已关闭，请重试。",
+        "auth/popup-blocked":
+          "Popup blocked by browser. 浏览器拦截了授权弹窗，请允许弹窗。",
+        "auth/account-exists-with-different-credential":
+          "An account already exists with this email. 该邮箱已有其他登录方式账号。",
+      };
+      alert(map[err?.code] || "Sign-in failed, check your connection. / 登录失败，请检查浏览器连接状态。");
     }
   };
 
