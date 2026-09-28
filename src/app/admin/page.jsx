@@ -14,7 +14,7 @@
 // ==========================================================================
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useAuthSession } from "@/database/auth";
 import DemoLoginCard from "@/app/components/DemoLoginCard";
@@ -41,6 +41,23 @@ export default function MerchantConsole() {
   const [publishMsg, setPublishMsg] = useState("");
   const [lastCampaignId, setLastCampaignId] = useState(null);
   const fileInputRef = useRef(null);
+
+  // ---- 挂载时加载商户可用托管余额（GET /api/merchant/balance）----
+  // 修复：充值后的余额存在 merchants/<merchantId>.balance_usd，页面初始加载需主动拉取，
+  //       避免刷新后误显示 $0.00。
+  useEffect(() => {
+    if (!merchantId) return;
+    let cancelled = false;
+    fetch(`/api/merchant/balance?merchantId=${encodeURIComponent(merchantId)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!cancelled && d) setBalance(Number(d.balance_usd ?? 0));
+      })
+      .catch((err) => console.error("[admin] load balance failed", err));
+    return () => {
+      cancelled = true;
+    };
+  }, [merchantId]);
 
   // ---- 商户美元账户充值 → POST /api/merchant/deposit ----
   const topUp = async () => {
