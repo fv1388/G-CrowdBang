@@ -52,11 +52,6 @@ export default function MerchantConsole() {
   const [lastCampaignId, setLastCampaignId] = useState(null);
   const fileInputRef = useRef(null);
 
-  // ---- 订阅收费（方案 B：固定月订阅）----
-  const [planState, setPlanState] = useState("idle"); // idle|submitting|success|error
-  const [planMsg, setPlanMsg] = useState("");
-  const [activePlan, setActivePlan] = useState(null);
-
   // ---- 挂载时加载商户可用托管余额（GET /api/merchant/balance）----
   // 修复：充值后的余额存在 merchants/<merchantId>.balance_usd，页面初始加载需主动拉取，
   //       避免刷新后误显示 $0.00。
@@ -115,41 +110,6 @@ export default function MerchantConsole() {
 
   // 本地选中的视频文件名（默认锁定 888.mp4，便于本地 /assets 直接播放）
   const selectedVideoName = videoFile?.name || "888.mp4";
-
-  // ---- 激活订阅套餐 → POST /api/subscription/create（方案 B 平台收入来源之一）----
-  const activatePlan = async (plan) => {
-    if (!merchantId) {
-      setPlanMsg("You must be signed in as a merchant.");
-      setPlanState("error");
-      return;
-    }
-    setPlanState("submitting");
-    setPlanMsg("");
-    try {
-      const res = await fetch("/api/subscription/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          merchantId,
-          plan,
-          paymentOrderId: plan === "pro" || plan === "enterprise" ? `paypal_order_${Date.now()}` : undefined,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setPlanMsg(`Subscription failed (${data?.error || res.status}).`);
-        setPlanState("error");
-        return;
-      }
-      setActivePlan(data.plan_name);
-      setPlanMsg(`✅ ${data.plan_name} active — renews ${data.renews_at.slice(0, 10)}. 订阅已生效。`);
-      setPlanState("success");
-    } catch (err) {
-      console.error("[admin] subscription failed", err);
-      setPlanState("error");
-      setPlanMsg("Network error.");
-    }
-  };
 
   // 发布悬赏并托管资金 → POST /api/campaigns/create（携带商户真实 UID）
   const publishCampaign = async () => {
@@ -340,52 +300,6 @@ export default function MerchantConsole() {
           )}
           {topUpState === "error" && (
             <p className="mt-3 rounded-xl bg-rose-50 border border-rose-300 p-3 text-sm text-rose-400">{topUpMsg}</p>
-          )}
-        </div>
-
-        {/* 订阅收费卡（方案 B：平台固定月订阅） */}
-        <div className="mt-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-          <h2 className="font-semibold text-gray-800">Subscription Plans</h2>
-          <p className="text-xs text-gray-500">订阅套餐（平台固定月费收入之一）</p>
-          <p className="mt-1 text-sm text-gray-600">
-            {activePlan
-              ? <>Active plan: <strong className="text-emerald-400">{activePlan}</strong>. 当前生效套餐。</>
-              : "Pick a plan to activate recurring access and priority distribution."}
-          </p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-3">
-            <button
-              onClick={() => activatePlan("starter")}
-              disabled={planState === "submitting"}
-              className="rounded-xl border border-gray-300 bg-gray-50 p-4 text-left hover:border-purple-500 disabled:opacity-50 transition-all"
-            >
-              <p className="font-semibold text-gray-900">Starter</p>
-              <p className="text-xs text-gray-500">免费 · 10 tasks/月</p>
-              <p className="mt-2 text-sm font-bold text-gray-800">$0</p>
-            </button>
-            <button
-              onClick={() => activatePlan("pro")}
-              disabled={planState === "submitting"}
-              className="rounded-xl border border-purple-600 bg-purple-900/20 p-4 text-left hover:bg-purple-900/40 disabled:opacity-50 transition-all"
-            >
-              <p className="font-semibold text-purple-700">Pro</p>
-              <p className="text-xs text-gray-600">无限任务 · 优先分发</p>
-              <p className="mt-2 text-sm font-bold text-purple-700">$99 / 月</p>
-            </button>
-            <button
-              onClick={() => activatePlan("enterprise")}
-              disabled={planState === "submitting"}
-              className="rounded-xl border border-gray-300 bg-gray-50 p-4 text-left hover:border-purple-500 disabled:opacity-50 transition-all"
-            >
-              <p className="font-semibold text-gray-900">Enterprise</p>
-              <p className="text-xs text-gray-500">专属客服 · 自定义核验窗口</p>
-              <p className="mt-2 text-sm font-bold text-gray-800">$299 / 月</p>
-            </button>
-          </div>
-          {planState === "success" && (
-            <p className="mt-3 rounded-xl bg-emerald-50 border border-emerald-800 p-3 text-sm text-emerald-400">{planMsg}</p>
-          )}
-          {planState === "error" && (
-            <p className="mt-3 rounded-xl bg-rose-50 border border-rose-300 p-3 text-sm text-rose-400">{planMsg}</p>
           )}
         </div>
 
