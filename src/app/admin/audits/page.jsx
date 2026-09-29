@@ -14,7 +14,7 @@ import Link from "next/link";
 import { useAuthSession } from "@/database/auth";
 
 export default function AdminAuditsPage() {
-  const { user, role, loading } = useAuthSession();
+  const { session, loading } = useAuthSession();
 
   const [audits, setAudits] = useState([]);
   const [fetching, setFetching] = useState(true);
@@ -22,7 +22,7 @@ export default function AdminAuditsPage() {
   const [msg, setMsg] = useState(null);
 
   // 鉴权卡点：仅 MERCHANT 可访问（render 派生，避免 effect 内同步 setState）
-  const denied = !loading && role !== "MERCHANT";
+  const denied = !loading && session?.role?.toUpperCase() !== "MERCHANT";
 
   // 拉取待核验对账列表
   const load = async () => {
@@ -59,7 +59,7 @@ export default function AdminAuditsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           submissionId,
-          merchantId: user?.uid || process.env.NEXT_PUBLIC_MERCHANT_ID || "mch_placeholder",
+          merchantId: session?.uid || process.env.NEXT_PUBLIC_MERCHANT_ID || "mch_placeholder",
           decision,
           note: decision === "approve" ? "Merchant manual approve" : "Merchant manual reject",
         }),
