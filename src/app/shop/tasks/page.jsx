@@ -47,6 +47,7 @@ export default function TaskHallPage() {
   // 收益余额（来自 /api/workers/my-submissions）
   const [balance, setBalance] = useState(0);
   const [mySubs, setMySubs] = useState([]);
+  const [videoFailed, setVideoFailed] = useState({});
 
   // 提现表单状态
   const [amount, setAmount] = useState("");
@@ -426,14 +427,16 @@ export default function TaskHallPage() {
         <div className="mt-6 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
           {campaigns.map((t) => {
             const src = isLocalEnv() ? LOCAL_ASSET_VIDEO : t.video_url;
-            const hasVideo = !!src;
+            const hasVideo = !!src && !videoFailed[t.id];
             const c = completion[t.id] || {};
             const sf = sampleForm[t.id] || {};
             return (
               <div key={t.id} className="flex flex-col rounded-2xl border border-gray-200 bg-white p-4 shadow-lg">
                 {/* 素材视频：有有效地址才渲染；无素材时用紧凑占位，避免空黑块占大片空白 */}
                 {hasVideo ? (
-                  <video controls preload="metadata" className="aspect-video w-full rounded-xl border border-gray-200 bg-black" src={src} />
+                  <video controls preload="metadata" className="aspect-video w-full rounded-xl border border-gray-200 bg-black" src={src}
+                    onError={() => setVideoFailed((m) => ({ ...m, [t.id]: true }))}
+                  />
                 ) : (
                   <div className="flex aspect-video w-full items-center justify-center rounded-xl border border-gray-200 bg-gray-100 text-sm text-gray-500">
                     🎬 素材待商家上传 · No asset preview yet
