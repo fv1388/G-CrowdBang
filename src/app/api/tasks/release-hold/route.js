@@ -71,10 +71,8 @@ async function checkPublicStatus(url) {
   }
 }
 
-export async function POST(request) {
+async function handleReleases({ onlySubmissionId = null, force = false } = {}) {
   try {
-    const body = await request.json().catch(() => ({}));
-    const onlySubmissionId = body?.submissionId || null;
 
     const nowMs = Date.now();
     const nowIso = new Date(nowMs).toISOString();
@@ -105,7 +103,7 @@ export async function POST(request) {
     for (const { id, ref, data } of holding) {
       const releaseAt = new Date(data.retention_release_at || 0).getTime();
       // 未到期：跳过（除非调用方 force）
-      if (!body?.force && releaseAt > nowMs) {
+      if (!force && releaseAt > nowMs) {
         results.push({ submissionId: id, action: "not_yet_due", release_at: data.retention_release_at });
         continue;
       }
@@ -232,4 +230,15 @@ export async function POST(request) {
     console.error("[release-hold]", err);
     return NextResponse.json({ error: "INTERNAL_ERROR" }, { status: 500 });
   }
+}
+
+// POST：可传 { submissionId } 处理单笔，或批量（force 可强制处理未到期单）
+export async function POST(request) {
+  const body = await request.json().catch(() => ({}));
+  return handleReleases({ onlySubmissionId: body?.submissionId || null, force: !!body?.force });
+}
+
+// GET：Vercel Cron 定时触发，批量扫描全部到期 HOLDING 单（无人值守）
+export async function GET() {
+  return handleReleases({ onlySubmissionId: null, force: false });
 }

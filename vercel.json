@@ -3,6 +3,10 @@
     {
       "path": "/api/tasks/auto-approve",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/tasks/release-hold",
+      "schedule": "0 3 * * *"
     }
   ]
 }
