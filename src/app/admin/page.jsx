@@ -32,7 +32,6 @@ export default function MerchantConsole() {
   const [balance, setBalance] = useState(0);
 
   // ---- 发布悬赏（本地视频上传 · 零绑定手动分发）----
-  const [targetAccount, setTargetAccount] = useState(""); // 可选：目标发布账号（如 @fv138888；UGC 模式不再强制）
   const [brandHashtag, setBrandHashtag] = useState(""); // 品牌话题（UGC：老外创作时带上，统一裂变流量）
   const [contentBrief, setContentBrief] = useState(""); // 内容要求/创作指引（UGC 核心）
   const [videoFile, setVideoFile] = useState(null); // 选中的本地 mp4 文件对象
@@ -208,7 +207,6 @@ export default function MerchantConsole() {
           platform, // 目标发布平台（tiktok/youtube/instagram/facebook/x）
           video_url: videoUrl,
           caption_text: captionText,
-          target_account: targetAccount, // 可选目标发布号（UGC 模式非核心锚点）
           brand_hashtag: brandHashtag, // 品牌话题（UGC：老外创作时带上）
           content_brief: contentBrief, // 内容要求/创作指引（UGC 核心）
           // 寄样带货字段（campaign_type=product_sample 时生效）
@@ -556,18 +554,6 @@ export default function MerchantConsole() {
                 className="mt-1 w-full rounded-xl bg-gray-50 border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             </div>
-            <div className="sm:col-span-2">
-              <label className="block text-sm text-gray-700">Target TikTok Account（可选）</label>
-              <p className="text-xs text-gray-500">可选：目标发布账号（如 @fv138888）。不填时老外直接发布到自己的账号即可。</p>
-              <input
-                type="text"
-                value={targetAccount}
-                onChange={(e) => setTargetAccount(e.target.value)}
-                placeholder="可选: @fv138888"
-                className="mt-1 w-full rounded-xl bg-gray-50 border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
-              />
-            </div>
-
             {/* 2) 本地视频上传控件 */}
             <div className="sm:col-span-2">
               <label className="block text-sm text-gray-700">Local Video Asset</label>
