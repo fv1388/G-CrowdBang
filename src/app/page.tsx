@@ -9,7 +9,14 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100">
       {/* ============ Hero ============ */}
-      <section className="mx-auto max-w-6xl px-6 pt-16 pb-14 text-center">
+      <section className="relative mx-auto max-w-6xl px-6 pt-16 pb-14 text-center">
+        {/* 右上角登录入口 */}
+        <Link
+          href="/login"
+          className="absolute right-0 top-0 rounded-lg border border-slate-600 px-4 py-1.5 text-sm font-medium text-slate-200 hover:bg-slate-800 hover:text-white transition-colors"
+        >
+          Sign in · 登录
+        </Link>
         {/* 大号品牌 Logo */}
         <img
           src="/crowdbang-logo-zh.png"
@@ -25,16 +32,6 @@ export default function Home() {
         </p>
         <p className="mt-2 text-base text-slate-400">
           用经过核验、真实落地的美国创作者，发起你的海外品牌增长任务。
-        </p>
-
-        <p className="mx-auto mt-8 max-w-3xl text-lg leading-relaxed text-slate-300">
-          Distribute bounty tasks to verified U.S. creators, audit every submission with
-          hardware-level GPS checks, and settle each payout through a transparent,
-          escrow-managed, deletion-proof pipeline.
-        </p>
-        <p className="mx-auto mt-3 max-w-3xl text-base leading-relaxed text-slate-400">
-          把悬赏任务分发给通过硬件级 GPS 核验的美国创作者，实时审计每一次提交，
-          并通过透明托管、防删锁款的流程完成结算，让每一分钱都有据可查。
         </p>
 
         {/* 双端 CTA */}
@@ -54,12 +51,6 @@ export default function Home() {
             <span className="ml-2 text-xs font-normal text-slate-400">商户入口 · 发布悬赏</span>
           </Link>
         </div>
-        <Link
-          href="/login"
-          className="mt-6 inline-block text-sm font-medium text-slate-400 underline-offset-4 hover:text-slate-200 hover:underline"
-        >
-          Sign in / 登录
-        </Link>
       </section>
 
       {/* ============ 招募图文说明（海报）· 首屏最上方 ============ */}
