@@ -337,6 +337,29 @@ export default function TaskHallPage() {
         </div>
       </section>
 
+      {/* ⭐ 收益规则 Banner：让老外第一眼看懂能赚多少（商家付服务费，达人拿全额） */}
+      <section className="max-w-6xl mx-auto px-6 pt-6">
+        <div className="rounded-2xl border border-emerald-500/40 bg-white p-6 shadow-sm">
+          <p className="text-xs uppercase tracking-widest text-emerald-600">Earn &amp; Payout Rules · 收益规则</p>
+          <div className="mt-3 grid gap-4 sm:grid-cols-3">
+            <div className="rounded-xl border border-gray-200 bg-emerald-50 p-4">
+              <p className="text-3xl font-extrabold text-emerald-600">$5</p>
+              <p className="mt-1 text-sm font-semibold text-gray-900">Video Upload Task</p>
+              <p className="mt-1 text-xs leading-relaxed text-gray-600">We give the finished video, title &amp; tags. You just log in and post.</p>
+            </div>
+            <div className="rounded-xl border border-gray-200 bg-emerald-50 p-4">
+              <p className="text-3xl font-extrabold text-emerald-600">$10</p>
+              <p className="mt-1 text-sm font-semibold text-gray-900">Sample Real-Shoot Task</p>
+              <p className="mt-1 text-xs leading-relaxed text-gray-600">Free sample shipped to you. Film it on your own account.</p>
+            </div>
+            <div className="rounded-xl border border-amber-300 bg-amber-50 p-4">
+              <p className="text-sm font-bold text-amber-800">✅ Platform service fee is paid by the merchant — never deducted from your pay. You see it, you get it.</p>
+              <p className="mt-2 text-xs leading-relaxed text-gray-600">90% paid immediately after audit. The last 10% releases automatically once the video stays public for 30 days. Withdraw from $10, paid to your PayPal.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ⭐ 品牌 UGC 创作指引 Banner（零绑定众包：发到自己账号，带品牌话题） */}
       <section className="max-w-6xl mx-auto px-6 pt-8">
         <div className="rounded-2xl border border-cyan-500/30 bg-gradient-to-r from-slate-900 via-cyan-950/40 to-slate-900 p-6 shadow-[0_0_30px_rgba(34,211,238,0.15)]">
