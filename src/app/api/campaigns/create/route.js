@@ -79,8 +79,10 @@ export async function POST(request) {
     }
 
     const ownerId = currentMerchantId(merchantId);
-    // 平台服务费：支持前端显式传入（默认 $4/单），覆盖寄样/视频任务的托管抽成
+    // 平台服务费：支持前端显式传入（默认 $2/单），覆盖寄样/视频任务的托管抽成
     const platformFee = Number(platform_fee) >= 0 ? Number(platform_fee) : (Number(escrow_summary?.platform_fee) >= 0 ? Number(escrow_summary.platform_fee) : 2.0);
+    // 本次发布需从商家可用余额冻结的托管总额 = 名额 × (单条佣金 + 单条平台服务费)
+    const requiredFunds = escrowCheck.escrow.total_slots * (escrowCheck.escrow.payout_rate + platformFee);
     const campaign = {
       campaign_id: null,
       owner_merchant_id: ownerId,
@@ -110,15 +112,16 @@ export async function POST(request) {
         radius_km: geotargeting_config?.radius_km ?? 0,
       },
       escrow_summary: { ...escrowCheck.escrow, platform_fee: platformFee },
+      // 托管冻结池：发布瞬间把"名额×每单总成本"从商家可用余额全额锁定，
+      // 放行时递减、拒付时退回商家。escrow_locked_usd 反映该任务当前仍冻住的资金。
+      escrow_locked_usd: requiredFunds,
+      slots_used: 0,
       status: "open",
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
 
     let campaignId;
-    const requiredFunds =
-      escrowCheck.escrow.total_slots *
-      (escrowCheck.escrow.payout_rate + escrowCheck.escrow.platform_fee);
 
     if (firebaseAvailable) {
       // 事务原子：校验商户余额 → 扣减 → 建单 → 写流水

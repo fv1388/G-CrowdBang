@@ -16,6 +16,7 @@ import {
   mockUsers,
   mockPlatform,
   mockCampaigns,
+  mockMerchants,
   applyFlatUpdate,
 } from "../_mock-store";
 
@@ -169,8 +170,11 @@ export async function POST(request) {
       );
     }
 
-    // ---- 决策 A：reject（拒付）——状态物理置为 rejected，不触发任何分账 ----
+    // ---- 决策 A：reject（拒付）——状态物理置为 rejected，并把该单冻结资金退回商家 ----
     if (decision === "reject") {
+      // 该单冻结的托管额（佣金+平台服务费）全部释放回商家可用余额，保全商家资金
+      const { workerPayout, platformFee } = await resolveCampaignPayout(submission.campaign_id);
+      const releaseUsd = workerPayout + platformFee;
       const update = {
         "audit_metadata.verification_status": "rejected",
         "audit_metadata.reject_reason": "MANUAL_REJECT",
@@ -181,12 +185,34 @@ export async function POST(request) {
         updated_at: nowIso,
       };
       if (firebaseAvailable) {
-        await subRef.update(update);
+        await db.runTransaction(async (tx) => {
+          tx.update(subRef, update);
+          // 退回商家可用余额
+          const owner = await resolveOwnerMerchantId(submission);
+          if (owner) {
+            tx.update(db.collection("merchants").doc(owner), {
+              balance_usd: FieldValue.increment(releaseUsd),
+              updated_at: nowIso,
+            });
+          }
+          // 递减任务冻结池
+          tx.update(db.collection("campaigns").doc(submission.campaign_id), {
+            escrow_locked_usd: FieldValue.increment(-releaseUsd),
+            updated_at: nowIso,
+          });
+        });
       } else {
         applyFlatUpdate(mockSubmissions.get(submissionId), update);
+        const owner = await resolveOwnerMerchantId(submission);
+        if (owner && mockMerchants.has(owner)) {
+          mockMerchants.set(owner, {
+            balance_usd: (mockMerchants.get(owner)?.balance_usd || 0) + releaseUsd,
+            currency: "USD",
+          });
+        }
       }
       return NextResponse.json(
-        { result: "rejected", source: firebaseAvailable ? "firestore" : "mock" },
+        { result: "rejected", released_usd: releaseUsd, source: firebaseAvailable ? "firestore" : "mock" },
         { status: 200 }
       );
     }
@@ -223,6 +249,13 @@ export async function POST(request) {
           { service_fee_balance_usd: FieldValue.increment(platformFee) },
           { merge: true }
         );
+
+        // 递减任务冻结池 + 累加已用名额（该单托管资金已完成分配）
+        tx.update(db.collection("campaigns").doc(data.campaign_id), {
+          escrow_locked_usd: FieldValue.increment(-(workerPayout + platformFee)),
+          slots_used: FieldValue.increment(1),
+          updated_at: nowIso,
+        });
       });
     } else {
       // 本地 mock 分账

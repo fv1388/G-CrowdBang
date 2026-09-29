@@ -25,15 +25,15 @@ const API_BASE =
     : "https://api-m.paypal.com";
 
 // ---- 凭证守卫：必须是真实凭证才走真钱；否则由调用方降级 mock ----
-// 生产凭证以 live_ 开头；沙盒凭证以 A 开头（PayPal 自动派发的 app 凭证）。
-// 只要仍含 "your_" 占位或缺省，一律视为"未配置真实凭证"。
+// PayPal 新版应用凭证为长字符串（不带 live_ 前缀，约 80-100 字符），
+// 旧版生产凭证以 live_ 开头。判定只排除占位/空值，再以长度作基本门限。
 export function paypalCredsReady() {
   const cid = process.env.PAYPAL_CLIENT_ID || process.env.PAYPAL_PRODUCTION_CLIENT_ID || "";
   const sec = process.env.PAYPAL_SECRET || process.env.PAYPAL_PRODUCTION_SECRET || "";
   if (!cid || !sec) return false;
   if (cid.includes("your_") || sec.includes("your_")) return false;
-  if (PAYPAL_MODE === "sandbox" && cid.length < 10) return false;
-  if (PAYPAL_MODE === "production" && !cid.startsWith("live_")) return false;
+  if (cid.includes("never_expose") || sec.includes("never_expose")) return false;
+  if (cid.trim().length < 40 || sec.trim().length < 40) return false;
   return true;
 }
 
