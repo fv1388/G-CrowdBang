@@ -9,7 +9,7 @@ import Link from "next/link";
 import { useAuthSession } from "@/database/auth";
 
 export default function MerchantCampaigns() {
-  const { user } = useAuthSession();
+  const { session } = useAuthSession();
   const [campaigns, setCampaigns] = useState([]);
   const [balance, setBalance] = useState(0);
   const [loadState, setLoadState] = useState("loading"); // loading | ok | error
@@ -26,7 +26,7 @@ export default function MerchantCampaigns() {
     (async () => {
       try {
         // 归属：用当前登录商户的真实 UID 查询，而非服务端占位 id
-        const merchantId = user?.uid || "";
+        const merchantId = session?.uid || "";
         const suffix = merchantId ? `?merchantId=${encodeURIComponent(merchantId)}` : "";
         const res = await fetch(`/api/admin/campaigns${suffix}`);
         if (!res.ok) throw new Error(`HTTP_${res.status}`);
@@ -42,7 +42,7 @@ export default function MerchantCampaigns() {
       }
     })();
     return () => { cancelled = true; };
-  }, [user?.uid]);
+  }, [session?.uid]);
 
   // 充值到钱包 → POST /api/merchant/deposit
   const topUp = async () => {
@@ -64,7 +64,7 @@ export default function MerchantCampaigns() {
       const res = await fetch("/api/merchant/deposit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ merchantId: "mch_placeholder", depositAmount: amt, paymentOrderId }),
+        body: JSON.stringify({ merchantId: session?.uid || "", depositAmount: amt, paymentOrderId }),
       });
       const data = await res.json();
       if (!res.ok) {
