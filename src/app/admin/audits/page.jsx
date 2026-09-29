@@ -47,7 +47,7 @@ export default function AdminAuditsPage() {
     // 首次挂载且角色就绪后拉取待核验列表；setState 均在异步回调内
     /* eslint-disable-next-line react-hooks/set-state-in-effect */
     load();
-  }, [role]);
+  }, [session?.uid]);
 
   // 放行 / 拒付
   const decide = async (submissionId, decision) => {
