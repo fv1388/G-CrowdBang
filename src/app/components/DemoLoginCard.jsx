@@ -17,13 +17,6 @@ const DEV_EMAIL = "suan147@qq.com";
 const DEV_MOCK_PASSWORD = "dev-mock-only-not-real";
 
 export default function DemoLoginCard({ role, backHref, introLabel }) {
-  // 仅本地(localhost / 127.0.0.1)才显示演示登录；生产环境隐藏
-  const [isLocal] = useState(() => {
-    if (typeof window === "undefined") return false;
-    const h = window.location.hostname;
-    return h === "localhost" || h === "127.0.0.1" || h === "[::1]";
-  });
-
   const [email, setEmail] = useState("");
   const [pwd, setPwd] = useState("");
   const [msg, setMsg] = useState("");
@@ -91,52 +84,10 @@ export default function DemoLoginCard({ role, backHref, introLabel }) {
     }
   };
 
-  // 生产环境：不暴露 demo 旁路，提供统一登录入口 + 说明
-  if (!isLocal) {
-    return (
-      <div className="mt-6 rounded-xl bg-slate-50 p-4 text-left text-sm">
-        <p className="font-medium text-slate-700">Production gate / 登录入口</p>
-        <p className="mt-1 text-xs text-slate-500">
-          Demo sign-in is disabled outside localhost. Merchant/worker consoles open once real
-          Firebase Auth is configured. Continue testing at <strong>http://localhost:3000</strong>.
-        </p>
-        <p className="mt-1 text-xs text-slate-500">
-          线上禁用演示登录；接入真实 Firebase 认证后商家/接单控制台即可打开。当前请在本地 localhost:3000 测试。
-        </p>
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <Link
-            href="/login"
-            className="block rounded-lg bg-indigo-600 px-4 py-2 text-center text-xs font-semibold text-white hover:bg-indigo-700"
-          >
-            Sign In · 登录
-          </Link>
-          <Link
-            href="/login?mode=register"
-            className="block rounded-lg border border-indigo-300 bg-white px-4 py-2 text-center text-xs font-semibold text-indigo-600 hover:bg-indigo-50"
-          >
-            Sign Up · 注册
-          </Link>
-        </div>
-        <Link
-          href="/auth"
-          className="mt-2 block rounded-lg bg-purple-600 px-4 py-2 text-center text-xs font-semibold text-white hover:bg-purple-500"
-        >
-          Create Account · 统一注册门户（选 Worker 一键谷歌/邮箱注册）
-        </Link>
-        <Link href={backHref} className="mt-2 block text-xs text-indigo-500 hover:underline">
-          ← {backHref === "/" ? "Back to landing / 返回首页" : "Back"}
-        </Link>
-      </div>
-    );
-  }
-
   return (
     <div className="mt-6 rounded-xl bg-slate-50 p-4 text-left">
       <p className="text-xs font-medium text-slate-500">
-        Local demo — sign in as {role} ({introLabel || "developer only"})
-      </p>
-      <p className="mt-1 text-xs text-slate-500">
-        本地演示 —— 以{role === "merchant" ? "商户" : "接单人"}身份登录（仅开发人员可用）
+        Demo sign-in — as {role} · 演示登录（{role === "merchant" ? "商户" : "接单人"}身份）
       </p>
 
       {/* 一键开发者登录（免手输；仅本地 mock） */}
