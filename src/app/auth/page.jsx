@@ -21,13 +21,18 @@
 // ==========================================================================
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import Script from "next/script";
+import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
 import {
-  signInWithGoogle,
+  auth as fbAuth,
   signUpWithEmail,
   signInWithEmail,
   firebaseConfigReady,
 } from "@/database/auth";
+
+// Google 一键登录 Client ID（官方 GSI SDK）
+const GOOGLE_CLIENT_ID = "400478069219-4l61k0fn1t3omci145dma3aoflfar3tc.apps.googleusercontent.com";
 
 // ---- 标准邮箱格式正则（阻挡乱填垃圾邮箱）----
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -127,39 +132,92 @@ export default function AuthPage() {
     }
   };
 
-  // ---- 一键谷歌登录（受法律勾选锁保护）----
-  const handleGoogle = async () => {
+  // ---- Google 一键登录（官方 GSI SDK：按钮弹出授权 → 回调凭证）----
+  const handleGoogleCredential = async (response) => {
+    const credential = response?.credential;
     setServerError("");
     setInfoNote("");
     if (submitLocked) {
-      setFieldError("Please accept the Terms of Service & Privacy Policy first.");
+      setFieldError("Please accept the Terms of Service & Privacy Policy first. / 请先勾选服务条款。");
+      return;
+    }
+    if (!credential) {
+      setServerError("Google sign-in did not return a credential. / 未获取到谷歌登录凭证。");
       return;
     }
     setLoading(true);
     try {
-      const s = await signInWithGoogle(role);
-      console.log("[auth] google ok", s);
-      window.location.href = routeByRole(s?.role);
+      // 1) 先走后端 /api/auth/google 做服务端校验 + 自动建号
+      const res = await fetch("/api/auth/google", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ credential, role }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setServerError(data?.message || "Google 登录失败，请重试。");
+        setLoading(false);
+        return;
+      }
+      // 2) 用 GSI 的 ID Token 建立 Firebase 会话（保持现有鉴权体系，其他页面不动）
+      try {
+        const cred = GoogleAuthProvider.credential(credential);
+        await signInWithCredential(fbAuth, cred);
+      } catch (fbErr) {
+        console.warn("[auth] firebase credential link skipped", fbErr?.code);
+      }
+      // 3) 按后端返回的角色跳转到对应空间
+      window.location.href = routeByRole(data.role);
     } catch (err) {
-      // 按 Firebase Auth 错误码给出具体原因
-      const map = {
-        "auth/operation-not-allowed":
-          "Google sign-in is not enabled yet in Firebase Auth. 谷歌登录尚未在 Firebase 启用。",
-        "auth/unauthorized-domain":
-          "This domain is not authorized for Google sign-in. 当前域名未授权谷歌登录。",
-        "auth/network-request-failed": "Network issue reaching Google. 网络无法连接谷歌。",
-        "auth/popup-closed-by-user": "Popup closed before sign-in completed. 授权弹窗已关闭。",
-        "auth/popup-blocked": "Popup blocked by browser. 浏览器拦截了授权弹窗。",
-      };
-      setServerError(
-        map[err?.code] ||
-          err?.message ||
-          "Google sign-in failed. Please check your connection. / 谷歌登录失败，请检查连接。"
-      );
+      console.error("[Google Auth]", err);
+      setServerError("Google 登录服务异常，请稍后重试。");
     } finally {
       setLoading(false);
     }
   };
+
+  // GSI SDK 初始化 + 官方按钮渲染（随角色选择重挂载，回调携带最新 role）
+  useEffect(() => {
+    window.handleCredentialResponse = handleGoogleCredential;
+    const initGsi = () => {
+      const gsi = window.google?.accounts?.id;
+      if (!gsi) return;
+      try {
+        gsi.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: handleGoogleCredential,
+          auto_select: false,
+          cancel_on_tap_outside: true,
+        });
+        const container = document.querySelector(".g_id_signin");
+        if (container) {
+          gsi.renderButton(container, {
+            type: "standard",
+            shape: "pill",
+            theme: "outline",
+            text: "signin_with",
+            size: "large",
+            logo_alignment: "left",
+            width: 400,
+          });
+        }
+      } catch (e) {
+        console.warn("[GSI init]", e);
+      }
+    };
+    if (window.google?.accounts?.id) {
+      initGsi();
+    } else {
+      const checkInterval = setInterval(() => {
+        if (window.google?.accounts?.id) {
+          clearInterval(checkInterval);
+          initGsi();
+        }
+      }, 500);
+      return () => clearInterval(checkInterval);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [role]);
 
   // ---- 双端角色大卡片 ----
   const ROLE_CARDS = [
@@ -323,36 +381,19 @@ export default function AuthPage() {
           </button>
         </form>
 
-        {/* 4) 一键谷歌登录按钮（同样受法律勾选锁保护） */}
+        {/* 4) Google 一键登录（官方 GSI SDK 按钮） */}
         <div className="mt-4">
           <div className="flex items-center gap-3 text-[11px] text-gray-500 mb-3">
             <span className="flex-1 h-px bg-gray-800" />
             or · 或
             <span className="flex-1 h-px bg-gray-800" />
           </div>
-          <button
-            type="button"
-            onClick={handleGoogle}
-            disabled={submitLocked || loading}
-            className={`w-full rounded-xl py-3 px-4 font-bold flex items-center justify-center gap-2.5 transition-all duration-200 active:scale-[0.99] ${
-              submitLocked
-                ? "bg-gray-800 text-gray-500 cursor-not-allowed"
-                : "bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 shadow-sm"
-            }`}
-          >
-            {/* 官方 Google 四色 G 图标 */}
-            <svg className="w-5 h-5" viewBox="0 0 48 48">
-              <path fill="#FFC107" d="M43.6 20.1H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.3 6.4 29.4 4.5 24 4.5 13.3 4.5 4.5 13.3 4.5 24S13.3 43.5 24 43.5 34.7 43.5 24c0-1.3-.1-2.6-.4-3.9z"/>
-              <path fill="#FF3D00" d="M6.4 14.7l6.6 4.8C14.8 15.9 18.5 12.8 23 12c-1-5.4-4.2-8.9-4.2-8.9-7.5 2.6-12.4 9-12.4 11.6z"/>
-              <path fill="#4CAF50" d="M24 43.5c4.9 0 9.4-1.8 12.7-4.9l-6.1-5.2c-1.9 1.4-4.3 2.2-6.6 2.2-5.2 0-9.6-3.4-11.2-8.1l-6.5 5c3.3 6.2 9.7 11 18.7 11z"/>
-              <path fill="#1976D2" d="M43.6 20.1h-1.6V20H24v8h11.3c-1.5 4.4-5.5 7.6-10.2 7.9v6.2c8.4 0 16.5-5.5 16.5-16.5 0-1.7-.3-3.3-.7-4.9z"/>
-            </svg>
-            <span className="text-sm tracking-wide">Continue with Google</span>
-          </button>
+          <div className="g_id_signin flex justify-center"></div>
           <p className="mt-1 text-center text-[11px] text-gray-500">
             Continue with Google / 用谷歌一键登录
           </p>
         </div>
+        <Script src="https://accounts.google.com/gsi/client" async defer strategy="afterInteractive" />
 
         {/* 模式切换：登录 ⇄ 注册 */}
         <div className="mt-5 text-center text-sm text-gray-600">
