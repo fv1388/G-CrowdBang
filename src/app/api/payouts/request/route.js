@@ -7,6 +7,7 @@
 
 import { NextResponse } from "next/server";
 import { mockUsers, mockPayoutRequests } from "../../tasks/_mock-store";
+import { createPayout, paypalCredsReady } from "@/lib/paypal";
 
 let db = null;
 let firebaseAvailable = false;
@@ -139,11 +140,51 @@ export async function POST(request) {
       mockPayoutRequests.set(payoutRequestId, { ...payoutRequest, payout_request_id: payoutRequestId });
     }
 
+    // ---- 真实打款：仅当配置了 PayPal 真实凭证且提现方式为 PayPal ----
+    // 调用 PayPal Payouts API 向老外的 PayPal 邮箱打款；成功则更新对账单状态。
+    let payoutStatus = "PENDING_TRANSFER";
+    let payoutBatchId = null;
+    let payoutError = null;
+
+    if (paypalCredsReady() && String(payoutMethod).toLowerCase() === "paypal") {
+      try {
+        const senderBatchId = `cb_${workerId}_${Date.now()}`;
+        const payout = await createPayout({
+          recipientEmail: destination.trim(),
+          amountUsd,
+          payoutBatchId: senderBatchId,
+        });
+        payoutBatchId = payout.batch_id || null;
+        payoutStatus = payoutBatchId ? "PROCESSING" : "PENDING_TRANSFER";
+      } catch (e) {
+        // 打款失败：保留对账单（已扣余额），标记失败并提示人工处理退款
+        payoutStatus = "PAYOUT_FAILED";
+        payoutError = e?.message || "PAYOUT_ERROR";
+        console.error("[payouts/request] PayPal payout failed", e);
+      }
+
+      if (firebaseAvailable && payoutRequestId) {
+        await db.collection("payout_requests").doc(payoutRequestId).update({
+          status: payoutStatus,
+          transfer_reference: payoutBatchId,
+          processed_at: payoutBatchId ? new Date().toISOString() : null,
+          payout_error: payoutError,
+        });
+      } else if (mockPayoutRequests.has(payoutRequestId)) {
+        const rec = mockPayoutRequests.get(payoutRequestId);
+        rec.status = payoutStatus;
+        rec.transfer_reference = payoutBatchId;
+        rec.payout_error = payoutError;
+        mockPayoutRequests.set(payoutRequestId, rec);
+      }
+    }
+
     return NextResponse.json(
       {
         payoutRequestId,
-        status: "PENDING_TRANSFER",
+        status: payoutStatus,
         amount_usd: amountUsd,
+        payout_batch_id: payoutBatchId,
         remaining_balance_usd: firebaseAvailable
           ? undefined
           : (mockUsers.get(workerId)?.balance_usd ?? 0),
