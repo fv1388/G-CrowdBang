@@ -424,7 +424,7 @@ export default function TaskHallPage() {
           <p className="mt-4 text-gray-500">No open bounties right now — check back soon.</p>
         )}
 
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
           {campaigns.map((t) => {
             // 防御①：数据损坏 / 已清空名额的任务优雅隐藏，防止长条形断层空白
             if (!t?.id) return null;
@@ -484,7 +484,13 @@ export default function TaskHallPage() {
                 <p className="mt-1 text-sm leading-relaxed text-gray-600">{displayCaption}</p>
                 {t.campaign_type === "video_post" && (
                   <div className="mt-2 rounded-lg bg-cyan-50 border border-cyan-200 px-3 py-2 text-xs leading-relaxed text-cyan-800">
-                    <span className="font-semibold">Create guidance:</span> Film a real 30-60s video of the product on your own account, include the brand hashtag from the task, then paste your public link below to get paid.
+                    <p className="font-semibold">Create guidance · 3 steps</p>
+                    <ol className="mt-1 list-decimal pl-4 space-y-1">
+                      <li>Download the sample video &amp; copy the caption above</li>
+                      <li>Post it on your own TikTok account with the brand hashtag</li>
+                      <li>Paste your public link + upload a screenshot below to get paid</li>
+                    </ol>
+                    <p className="mt-1 font-semibold text-cyan-700">💸 ${payoutRate.toFixed(2)} after a successful audit</p>
                   </div>
                 )}
                 {t.content_brief && (
@@ -546,7 +552,7 @@ export default function TaskHallPage() {
                 </div>
 
                 {/* 完工证明对账单上传表单（Form Gateway） */}
-                <div className="mt-auto pt-4 rounded-xl border border-gray-300 bg-gray-50 p-3">
+                <div className="mt-4 rounded-xl border border-gray-300 bg-gray-50 p-3">
                   <p className="text-xs font-semibold text-gray-700">Proof of completion / 完工证明对账单</p>
                   <p className="mt-1 text-[11px] leading-relaxed text-gray-500">
                     Posted on your own account? Paste the public link and attach a timestamped TikTok success screenshot, then submit for audit.
