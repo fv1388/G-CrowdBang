@@ -177,6 +177,42 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ============ 招募图文说明（海报） ============ */}
+      <section className="mx-auto max-w-6xl px-6 pb-12">
+        <div className="rounded-3xl border border-slate-800 bg-slate-900 p-8 sm:p-10">
+          <div className="grid items-center gap-8 md:grid-cols-2">
+            <div>
+              <p className="text-xs uppercase tracking-widest text-emerald-400">Earn Real Cash</p>
+              <h2 className="mt-2 text-3xl font-bold sm:text-4xl">
+                $5–$10 per TikTok video
+              </h2>
+              <p className="mt-2 text-sm text-slate-400">
+                每发一条 TikTok 视频赚 $5–$10
+              </p>
+              <ul className="mt-6 space-y-3 text-sm text-slate-200">
+                <li>✅ <b>You get 100%</b> — platform service fee is paid by the merchant, never deducted from your pay · 服务费商家付，达人拿全额</li>
+                <li>✅ <b>90% paid immediately</b> after audit · 核验通过 90% 即时到账</li>
+                <li>✅ Last 10% releases automatically once the video stays public for 30 days · 视频保留 30 天自动释放</li>
+                <li>✅ Withdraw from $10 via PayPal · 满 $10 起 PayPal 提现</li>
+                <li>✅ Real tasks · Real pay · No experience needed · 真实任务、真实报酬、无需经验</li>
+              </ul>
+              <div className="mt-7 flex flex-wrap gap-4">
+                <Link href="/shop/tasks" className="rounded-xl bg-emerald-500 px-6 py-3 font-bold text-emerald-950 hover:bg-emerald-400">
+                  Join the Task Hall · 进入接单大厅
+                </Link>
+              </div>
+            </div>
+            <div className="mx-auto w-full max-w-sm">
+              <img
+                src="/crowdbang-recruit-poster.png"
+                alt="CrowdBang recruit poster · 招募海报"
+                className="w-full rounded-2xl border border-slate-700 shadow-2xl"
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ============ 底部标语 ============ */}
       <footer className="border-t border-slate-800 py-8 text-center">
         <p className="text-sm font-semibold text-slate-300">
