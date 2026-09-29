@@ -89,16 +89,16 @@ async function resolveCampaignPayout(campaignId) {
         const esc = d?.escrow_summary || {};
         const p = Number(esc.payout_rate) > 0 ? Number(esc.payout_rate) : 3.0;
         const f = Number(esc.platform_fee) >= 0 ? Number(esc.platform_fee) : 1.0;
-        const retentionDays = Number(d?.retention_days) > 0 ? Number(d.retention_days) : 7;
+        const retentionDays = Number(d?.retention_days) > 0 ? Number(d.retention_days) : 30;
         return { workerPayout: p, platformFee: f, retentionDays };
       }
     } catch (_) { /* 读不到回退默认 */ }
-    return { workerPayout: WORKER_PAYOUT, platformFee: PLATFORM_FEE, retentionDays: 7 };
+    return { workerPayout: WORKER_PAYOUT, platformFee: PLATFORM_FEE, retentionDays: 30 };
   }
   const camp = mockCampaigns.get(campaignId);
   const p = Number(camp?.payout) > 0 ? Number(camp.payout) : WORKER_PAYOUT;
   const f = Number(camp?.platformFee) >= 0 ? Number(camp.platformFee) : PLATFORM_FEE;
-  const retentionDays = Number(camp?.retentionDays) > 0 ? Number(camp.retentionDays) : 7;
+  const retentionDays = Number(camp?.retentionDays) > 0 ? Number(camp.retentionDays) : 30;
   return { workerPayout: p, platformFee: f, retentionDays };
 }
 
@@ -221,12 +221,12 @@ export async function POST(request) {
     }
 
     // ---- 决策 B：approve（放行）→ 原子托管分账（两段式结算）----
-    // 防"拿钱删视频"：核验通过只释放 70% 佣金进老外可提现余额，30% 冻结至保留期届满；
-    // 保留期内视频若被删除/转私密，冻结的 30% 扣除并拉黑（见 /api/tasks/release-hold）。
+    // 防"拿钱删视频"：核验通过即释放 90% 佣金进老外可提现余额（放宽先支付），10% 冻结至 30 天保留期；
+    // 保留期内视频若被删除/转私密，冻结的 10% 扣除并拉黑（见 /api/tasks/release-hold）。
     const { workerPayout, platformFee, retentionDays } = await resolveCampaignPayout(submission.campaign_id);
-    const HOLD_RATIO = 0.30;
-    const releasedUsd = Math.round(workerPayout * (1 - HOLD_RATIO) * 100) / 100; // 70%
-    const holdUsd = Math.round(workerPayout * HOLD_RATIO * 100) / 100;           // 30%
+    const HOLD_RATIO = 0.10; // 放宽：90% 即时到账，10% 冻结 30 天
+    const releasedUsd = Math.round(workerPayout * (1 - HOLD_RATIO) * 100) / 100; // 90%
+    const holdUsd = Math.round(workerPayout * HOLD_RATIO * 100) / 100;           // 10%
     const releaseAtIso = new Date(Date.now() + retentionDays * 24 * 60 * 60 * 1000).toISOString();
 
     if (firebaseAvailable) {
@@ -251,7 +251,7 @@ export async function POST(request) {
           updated_at: nowIso,
         });
 
-        // 佣金：70% 进可提现余额，30% 进冻结余额（保留期届满后才可提现）
+        // 佣金：90% 进可提现余额，10% 进冻结余额（保留期届满后才可提现）
         const workerRef = db.collection("users").doc(data.worker_id);
         tx.set(
           workerRef,

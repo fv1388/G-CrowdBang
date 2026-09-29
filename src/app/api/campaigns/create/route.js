@@ -62,8 +62,8 @@ export async function POST(request) {
     const body = await request.json();
     const { title, video_url, caption_text, target_hashtags, geotargeting_config, escrow_summary, merchantId, target_account, target_tiktok_account, audit_strategy, audit_auto_approve_hours, brand_hashtag, content_brief, campaign_type, product_name, product_description, brand_tag, comment_link_required, platform_fee, platform, retention_days } = body || {};
 
-    // 保留期（防"拿钱删视频"）：视频需保持公开的核验天数，默认 7 天；期间 30% 佣金冻结不可提现
-    const retentionDays = Number(retention_days) > 0 ? Number(retention_days) : 7;
+    // 保留期（防"拿钱删视频"）：视频需保持公开的核验天数，默认 30 天；期间 10% 佣金冻结不可提现
+    const retentionDays = Number(retention_days) > 0 ? Number(retention_days) : 30;
 
     // 人工核验超时自动放行窗口（小时）：商户可设，未设则默认 48h
     const autoApproveHours = Number(audit_strategy?.auto_approve_after_hours ?? audit_auto_approve_hours);
@@ -115,7 +115,7 @@ export async function POST(request) {
         radius_km: geotargeting_config?.radius_km ?? 0,
       },
       escrow_summary: { ...escrowCheck.escrow, platform_fee: platformFee },
-      // 保留期天数：佣金需保持视频公开 N 天后才释放剩余 30%，防"拿钱删视频"
+      // 保留期天数：佣金需保持视频公开 N 天后才释放剩余 10%，防"拿钱删视频"（默认 30 天）
       retention_days: retentionDays,
       // 托管冻结池：发布瞬间把"名额×每单总成本"从商家可用余额全额锁定，
       // 放行时递减、拒付时退回商家。escrow_locked_usd 反映该任务当前仍冻住的资金。
@@ -188,7 +188,7 @@ export async function POST(request) {
         brandTag: campaign.brand_tag,
         commentLinkRequired: campaign.comment_link_required,
         platformFee: escrow.platform_fee ?? 2.0,
-        retentionDays: campaign.retention_days ?? 7,
+        retentionDays: campaign.retention_days ?? 30,
         audit_strategy: campaign.audit_strategy,
         video_url: campaign.video_url,
         caption_text: campaign.caption_text,
