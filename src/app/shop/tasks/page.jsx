@@ -434,11 +434,11 @@ export default function TaskHallPage() {
               <div key={t.id} className="flex flex-col rounded-2xl border border-gray-200 bg-white p-4 shadow-lg">
                 {/* 素材视频：有有效地址才渲染；无素材时用紧凑占位，避免空黑块占大片空白 */}
                 {hasVideo ? (
-                  <video controls preload="metadata" className="aspect-video w-full rounded-xl border border-gray-200 bg-black" src={src}
+                  <video controls preload="metadata" className="h-52 w-full rounded-xl border border-gray-200 bg-black" src={src}
                     onError={() => setVideoFailed((m) => ({ ...m, [t.id]: true }))}
                   />
                 ) : (
-                  <div className="flex aspect-video w-full items-center justify-center rounded-xl border border-gray-200 bg-gray-100 text-sm text-gray-500">
+                  <div className="flex h-52 w-full items-center justify-center rounded-xl border border-gray-200 bg-gray-100 text-sm text-gray-500">
                     🎬 素材待商家上传 · No asset preview yet
                   </div>
                 )}
