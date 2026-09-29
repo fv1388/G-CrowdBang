@@ -16,7 +16,6 @@ export default function MerchantCampaigns() {
 
   // 充值表单状态
   const [depositAmount, setDepositAmount] = useState("");
-  const [paymentOrderId, setPaymentOrderId] = useState("");
   const [depositState, setDepositState] = useState("idle"); // idle | submitting | success | error
   const [depositMsg, setDepositMsg] = useState("");
   const [lastDepositId, setLastDepositId] = useState(null);
@@ -44,7 +43,32 @@ export default function MerchantCampaigns() {
     return () => { cancelled = true; };
   }, [session?.uid]);
 
-  // 充值到钱包 → POST /api/merchant/deposit
+  // 充值到钱包 → 标准两步 PayPal：create-order（拿付款链接）→ 跳 PayPal 付款 → 回跳 capture 入账
+  const completeCapture = async (merchantId, orderId, amount) => {
+    try {
+      const res = await fetch("/api/merchant/deposit/capture", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ merchantId, orderId, amountUsd: amount }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setDepositMsg(data?.error === "PAYMENT_NOT_COMPLETED" ? "Payment not completed yet." : "Capture failed. Please try again.");
+        setDepositState("error");
+        return;
+      }
+      setLastDepositId(data.depositId ?? null);
+      setBalance(data.balance_usd ?? 0);
+      setDepositAmount("");
+      setDepositState("success");
+    } catch (err) {
+      console.error("[admin/campaigns] capture failed", err);
+      setDepositState("error");
+      setDepositMsg("Network error — please try again.");
+    }
+  };
+
+  // 充值第一步：创建 PayPal 订单
   const topUp = async () => {
     const amt = Number(depositAmount);
     if (!(amt > 0)) {
@@ -52,8 +76,9 @@ export default function MerchantCampaigns() {
       setDepositState("error");
       return;
     }
-    if (!paymentOrderId) {
-      setDepositMsg("Enter the payment order ID from your payment provider.");
+    const merchantId = session?.uid || "";
+    if (!merchantId) {
+      setDepositMsg("You must be signed in as a merchant.");
       setDepositState("error");
       return;
     }
@@ -61,32 +86,49 @@ export default function MerchantCampaigns() {
     setDepositState("submitting");
     setDepositMsg("");
     try {
-      const res = await fetch("/api/merchant/deposit", {
+      const res = await fetch("/api/merchant/deposit/create-order", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ merchantId: session?.uid || "", depositAmount: amt, paymentOrderId }),
+        body: JSON.stringify({ merchantId, amountUsd: amt }),
       });
       const data = await res.json();
       if (!res.ok) {
-        setDepositMsg(
-          data?.error === "PAYMENT_NOT_VERIFIED"
-            ? "Payment not verified — check the order ID."
-            : "Deposit failed. Please try again."
-        );
+        setDepositMsg(data?.error || "Create order failed. Please try again.");
         setDepositState("error");
         return;
       }
-      setLastDepositId(data.depositId ?? null);
-      setBalance(data.balance_usd ?? 0);
-      setDepositAmount("");
-      setPaymentOrderId("");
-      setDepositState("success");
+      // mock 模式：无 approveUrl，直接按 mock 订单捕获入账
+      if (!data.approveUrl) {
+        await completeCapture(merchantId, data.orderId, amt);
+        return;
+      }
+      // 真 PayPal：暂存待捕获订单，跳转到 PayPal 付款
+      sessionStorage.setItem(
+        "pp_pending_order",
+        JSON.stringify({ merchantId, orderId: data.orderId, amount: amt })
+      );
+      window.location.href = data.approveUrl;
     } catch (err) {
-      console.error("[admin/campaigns] deposit failed", err);
+      console.error("[admin/campaigns] create order failed", err);
       setDepositState("error");
       setDepositMsg("Network error — please try again.");
     }
   };
+
+  // 充值第二步：从 PayPal 付款页回跳后，自动捕获入账
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const pending = sessionStorage.getItem("pp_pending_order");
+    if (!pending) return;
+    try {
+      const { merchantId, orderId, amount } = JSON.parse(pending);
+      sessionStorage.removeItem("pp_pending_order");
+      completeCapture(merchantId, orderId, amount);
+    } catch {
+      sessionStorage.removeItem("pp_pending_order");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900">
@@ -121,31 +163,18 @@ export default function MerchantCampaigns() {
           </p>
           <p className="text-xs text-slate-500">可用托管余额：${Number(balance).toFixed(2)}</p>
 
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <div>
-              <label className="block text-sm text-slate-600">Deposit amount (USD)</label>
-              <p className="text-xs text-slate-500">充值金额（美元）</p>
-              <input
-                type="number"
-                min="1"
-                step="0.01"
-                value={depositAmount}
-                onChange={(e) => setDepositAmount(e.target.value)}
-                placeholder="e.g. 100.00"
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm text-slate-600">Payment order ID</label>
-              <p className="text-xs text-slate-500">支付订单号</p>
-              <input
-                type="text"
-                value={paymentOrderId}
-                onChange={(e) => setPaymentOrderId(e.target.value)}
-                placeholder="paypal_order_xxx"
-                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
+          <div className="mt-4">
+            <label className="block text-sm text-slate-600">Deposit amount (USD)</label>
+            <p className="text-xs text-slate-500">充值金额（美元）</p>
+            <input
+              type="number"
+              min="1"
+              step="0.01"
+              value={depositAmount}
+              onChange={(e) => setDepositAmount(e.target.value)}
+              placeholder="e.g. 100.00"
+              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            />
           </div>
 
           <button
