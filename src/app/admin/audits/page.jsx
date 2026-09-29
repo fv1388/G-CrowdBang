@@ -28,7 +28,7 @@ export default function AdminAuditsPage() {
   const load = async () => {
     setFetching(true);
     try {
-      const res = await fetch("/api/admin/audits", { cache: "no-store" });
+      const res = await fetch(`/api/admin/audits?merchantId=${encodeURIComponent(session?.uid || "")}`, { cache: "no-store" });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error(j?.error || `HTTP ${res.status}`);
