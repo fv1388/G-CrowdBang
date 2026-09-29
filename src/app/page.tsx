@@ -10,6 +10,12 @@ export default function Home() {
     <main className="min-h-screen bg-slate-950 text-slate-100">
       {/* ============ Hero ============ */}
       <section className="relative mx-auto max-w-6xl px-6 pt-16 pb-14 text-center">
+        {/* 左上角圆形 LOGO */}
+        <img
+          src="/crowdbang-logo-circle.png"
+          alt="CrowdBang"
+          className="absolute left-0 top-0 h-12 w-12 rounded-full border border-slate-700 object-cover shadow-xl"
+        />
         {/* 右上角登录入口 */}
         <Link
           href="/login"
@@ -17,12 +23,6 @@ export default function Home() {
         >
           Sign in · 登录
         </Link>
-        {/* 大号品牌 Logo */}
-        <img
-          src="/crowdbang-logo-zh.png"
-          alt="CrowdBang · 众人帮"
-          className="mx-auto mb-10 h-24 w-auto rounded-2xl bg-white px-6 py-3 object-contain shadow-2xl md:h-28"
-        />
 
         <h1 className="mx-auto max-w-4xl text-4xl font-extrabold tracking-tight sm:text-5xl md:text-6xl">
           CrowdBang · 众人帮
