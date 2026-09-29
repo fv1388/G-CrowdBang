@@ -108,6 +108,8 @@ export async function POST(request) {
   try {
     const body = await request.json();
     const { campaignId, workerId } = body || {};
+    // 寄样任务：老外申请免费样品时填写的美国收货地址（仅 product_sample 任务使用）
+    const shippingAddress = (body?.shipping_address || "").trim();
 
     // 完工对账字段（可选）：老外手动发布后回填的公开链接 + 截图文件名
     const publishedVideoUrl = body?.published_video_url ?? null;
@@ -201,6 +203,7 @@ export async function POST(request) {
     // 1) 载入任务配置（campaign），确定地理围栏与总名额
     let geo = { enabled: false };
     let totalSlots = 0;
+    let campaignType = "video_post";
 
     if (firebaseAvailable) {
       const snap = await db.collection("campaigns").doc(campaignId).get();
@@ -210,6 +213,7 @@ export async function POST(request) {
       const c = snap.data();
       geo = c.geotargeting_config || {};
       totalSlots = c.escrow_summary?.total_slots || 0;
+      campaignType = c.campaign_type || "video_post";
     } else {
       const campaign = mockCampaigns.get(campaignId);
       if (!campaign) {
@@ -220,6 +224,7 @@ export async function POST(request) {
       totalSlots = typeof campaign.slotsRemaining === "number"
         ? campaign.slotsRemaining
         : (campaign.escrow_summary?.total_slots || 0);
+      campaignType = campaign.campaignType || "video_post";
     }
 
     // 2) 地理围栏区间校验（服务端二次校验，不信任前端）——先验围栏再扣名额，避免越界单白占名额
@@ -231,16 +236,29 @@ export async function POST(request) {
       );
     }
 
+    // 寄样任务卡点：申请免费样品必须填写美国收货地址（product_sample）
+    if (campaignType === "product_sample" && !shippingAddress) {
+      return NextResponse.json(
+        { error: "SHIPPING_ADDRESS_REQUIRED", hint: "fill a US shipping address to claim the free sample" },
+        { status: 400 }
+      );
+    }
+
     // 3) 原子名额锁（反超卖）：读取剩余名额 → 校验 → 扣减 -1，减后 < 0 则熔断 "TASK_FULL"
     const submission = {
       campaign_id: campaignId,
       worker_id: workerId,
+      campaign_type: campaignType,
       hardware_geoloc: { latitude, longitude, accuracy },
       is_authentic_match: isAuthenticMatch,
       audit_metadata: {
         published_video_id: null,
         verification_status: "PENDING_AUDIT",
       },
+      // 寄样任务：标记已申请样品并登记收货地址（供商家备货寄样）
+      ...(campaignType === "product_sample"
+        ? { sample_requested: true, shipping_address: shippingAddress }
+        : {}),
       claim_timestamp: new Date().toISOString(),
       submitted_at: null,
       payout_status: "held",

@@ -90,6 +90,27 @@ const DEMO_SEED = [
     slotsRemaining: 15,
     boundary: { enabled: true, center: { latitude: 27.9506, longitude: -82.4572 }, radiusKm: 80, maxAcceptableAccuracyMeters: 200 },
   },
+  {
+    id: "cmp_demo_004",
+    merchantId: "mch_demo",
+    title: "📦 Free Sample — Smart LED Ring Light",
+    campaign_type: "product_sample",
+    video_url: "",
+    caption_text: "We'll ship you a free smart LED ring light. Film an honest setup/review on your own account, @ our brand in the title, and drop the product link in the comments. Keep it real — that's what pays.",
+    content_brief: "Film a real 30-60s video of the ring light in your own space: setup, how you use it, honest pros/cons. Post on your own account.",
+    brand_hashtag: "#LEDRingLight",
+    product_name: "Smart LED Ring Light",
+    product_description: "Free sample — you keep the product. Create an honest review/setup video.",
+    brand_tag: "@fv138888",
+    comment_link_required: true,
+    target_account: "",
+    city: "Miami",
+    state: "FL",
+    payout: 12.0,
+    platformFee: 4.0,
+    slotsRemaining: 20,
+    boundary: { enabled: true, center: { latitude: 25.7617, longitude: -80.1918 }, radiusKm: 80, maxAcceptableAccuracyMeters: 200 },
+  },
 ];
 
 // 首次访问且 mock 账本为空时，播种演示任务（仅 mock 模式；真实库由商户建单填充）
@@ -124,15 +145,21 @@ export async function GET() {
       return {
         id: doc.id,
         title: d.title || "Untitled Campaign",
+        campaign_type: d.campaign_type || "video_post",
         video_url: d.video_url || "",
         caption_text: d.caption_text || "",
         brand_hashtag: d.brand_hashtag || "", // 品牌话题（UGC 创作导向）
         content_brief: d.content_brief || "", // 内容要求/创作指引
         target_account: d.target_account || "", // 目标发布号（可选）
+        // ---- 寄样带货字段 ----
+        product_name: d.product?.name || "",
+        product_description: d.product?.description || "",
+        brand_tag: d.brand_tag || "", // 标题@的品牌账号
+        comment_link_required: !!d.comment_link_required,
         city: geo.enabled ? geo.target_city : "Anywhere",
         state: geo.enabled ? geo.target_state : "US",
         payout: escrow.payout_rate ?? 3.0, // 达人单条佣金
-        platform_fee: escrow.platform_fee ?? 1.0, // 平台单条服务费
+        platform_fee: escrow.platform_fee ?? 4.0, // 平台单条服务费
         slotsRemaining: Math.max(0, total - used),
         boundary: {
           enabled: !!geo.enabled,

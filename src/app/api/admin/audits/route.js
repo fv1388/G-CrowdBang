@@ -104,9 +104,20 @@ function buildRow(submissionId, s, camp) {
     submissionId,
     campaignId: s.campaign_id,
     campaignTitle: camp.title || camp.caption_text || null,
+    campaignType: camp.campaign_type || camp.campaignType || null, // video_post | product_sample
     targetAccount: camp.target_account || camp.targetAccount || null,
     videoUrl: camp.video_url || null,
     captionText: s.caption_text || camp.caption_text || null,
+    // 寄样带货信息
+    productName: camp.product?.name || camp.productName || null,
+    productDescription: camp.product?.description || camp.productDescription || null,
+    brandTag: camp.brand_tag || camp.brandTag || null,
+    commentLinkRequired: camp.comment_link_required ?? camp.commentLinkRequired ?? false,
+    shippingAddress: s.shipping_address || null,
+    sampleRequested: !!s.sample_requested,
+    // 分账数值（前端展示放行后老外/平台各得多少）
+    payout: camp.escrow_summary?.payout_rate ?? camp.payout ?? 3.0,
+    platformFee: camp.escrow_summary?.platform_fee ?? camp.platformFee ?? 4.0,
     workerId: s.worker_id,
     latitude: s.hardware_geoloc?.latitude,
     longitude: s.hardware_geoloc?.longitude,

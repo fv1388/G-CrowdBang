@@ -60,7 +60,7 @@ function validateEscrow(escrow) {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { title, video_url, caption_text, target_hashtags, geotargeting_config, escrow_summary, merchantId, target_account, target_tiktok_account, audit_strategy, audit_auto_approve_hours, brand_hashtag, content_brief } = body || {};
+    const { title, video_url, caption_text, target_hashtags, geotargeting_config, escrow_summary, merchantId, target_account, target_tiktok_account, audit_strategy, audit_auto_approve_hours, brand_hashtag, content_brief, campaign_type, product_name, product_description, brand_tag, comment_link_required, platform_fee } = body || {};
 
     // 人工核验超时自动放行窗口（小时）：商户可设，未设则默认 48h
     const autoApproveHours = Number(audit_strategy?.auto_approve_after_hours ?? audit_auto_approve_hours);
@@ -79,15 +79,25 @@ export async function POST(request) {
     }
 
     const ownerId = currentMerchantId(merchantId);
+    // 平台服务费：支持前端显式传入（默认 $4/单），覆盖寄样/视频任务的托管抽成
+    const platformFee = Number(platform_fee) >= 0 ? Number(platform_fee) : (Number(escrow_summary?.platform_fee) >= 0 ? Number(escrow_summary.platform_fee) : 4.0);
     const campaign = {
       campaign_id: null,
       owner_merchant_id: ownerId,
       title,
+      campaign_type: campaign_type || "video_post", // video_post=视频代发 / product_sample=寄样带货
       video_url: video_url ?? "",
       caption_text: caption_text ?? "",
       target_account: target_tiktok_account || target_account || "", // 目标发布号（可选；UGC 模式不再作为核心必填）
       brand_hashtag: brand_hashtag || "", // 品牌话题（UGC 模式核心：老外创作时带上品牌话题/链接）
       content_brief: content_brief || "", // 内容要求/创作指引（UGC 模式核心）
+      // ---- 寄样带货任务字段（campaign_type=product_sample 时使用）----
+      product: {
+        name: product_name || "",
+        description: product_description || "",
+      },
+      brand_tag: brand_tag || "", // 标题@的品牌账号（寄样任务要求老外标题@该账号）
+      comment_link_required: !!comment_link_required, // 是否要求老外在评论区挂商品链接
       audit_strategy: auditStrategy, // 人工核验 + 超时自动放行窗口（默认 48h）
       target_hashtags: Array.isArray(target_hashtags) ? target_hashtags : [],
       geotargeting_config: {
@@ -98,7 +108,7 @@ export async function POST(request) {
         target_lng: geotargeting_config?.target_lng ?? null,
         radius_km: geotargeting_config?.radius_km ?? 0,
       },
-      escrow_summary: escrowCheck.escrow,
+      escrow_summary: { ...escrowCheck.escrow, platform_fee: platformFee },
       status: "open",
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -163,7 +173,12 @@ export async function POST(request) {
         targetAccount: campaign.target_account,
         brandHashtag: campaign.brand_hashtag,
         contentBrief: campaign.content_brief,
-        platformFee: escrow.platform_fee ?? 1.0,
+        campaignType: campaign.campaign_type,
+        productName: campaign.product?.name,
+        productDescription: campaign.product?.description,
+        brandTag: campaign.brand_tag,
+        commentLinkRequired: campaign.comment_link_required,
+        platformFee: escrow.platform_fee ?? 4.0,
         audit_strategy: campaign.audit_strategy,
         video_url: campaign.video_url,
         caption_text: campaign.caption_text,

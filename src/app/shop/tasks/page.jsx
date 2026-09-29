@@ -50,6 +50,68 @@ export default function TaskHallPage() {
   const setCompletionFor = (cid, patch) =>
     setCompletion((prev) => ({ ...prev, [cid]: { ...(prev[cid] || {}), ...patch } }));
 
+  // 寄样申请表单状态：key = campaignId → { address, state, msg }
+  const [sampleForm, setSampleForm] = useState({});
+  const setSampleFor = (cid, patch) =>
+    setSampleForm((prev) => ({ ...prev, [cid]: { ...(prev[cid] || {}), ...patch } }));
+
+  // 申请免费样品：填美国收货地址 + 硬件 GPS 校验 → POST verify-and-publish 建 sample_requested 单
+  const applySample = (campaignId) => {
+    const sf = sampleForm[campaignId] || {};
+    const addr = (sf.address || "").trim();
+    if (!addr) {
+      setSampleFor(campaignId, { state: "error", msg: "Please enter your US shipping address first." });
+      return;
+    }
+    if (!workerId) {
+      setSampleFor(campaignId, { state: "error", msg: "You must be signed in as a worker." });
+      return;
+    }
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setSampleFor(campaignId, { state: "error", msg: "GPS is not supported on this device." });
+      return;
+    }
+    setSampleFor(campaignId, { state: "submitting", msg: "" });
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        try {
+          const res = await fetch("/api/tasks/verify-and-publish", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ campaignId, workerId, shipping_address: addr, latitude, longitude }),
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            setSampleFor(campaignId, {
+              state: "error",
+              msg:
+                data?.error === "OUT_OF_GEOFENCE"
+                  ? "Your location is outside the task area."
+                  : data?.error === "TASK_FULL"
+                    ? "This sample is fully claimed."
+                    : `Apply failed (${data?.error || res.status}).`,
+            });
+            return;
+          }
+          setSampleFor(campaignId, {
+            state: "success",
+            msg: `✅ Sample requested (${data.submissionId}). We have your shipping address — merchant will ship it. 已申请样品，等待商家寄样。`,
+          });
+        } catch (e) {
+          console.error("[task-hall] sample apply failed", e);
+          setSampleFor(campaignId, { state: "error", msg: "Network error — please try again." });
+        }
+      },
+      (err) =>
+        setSampleFor(campaignId, {
+          state: "error",
+          msg: "GPS denied — location verification is required to claim the free sample.",
+        }),
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
   // 挂载完成(Mount)后拉取任务列表 + 收益余额
   useEffect(() => {
     let cancelled = false;
@@ -335,6 +397,7 @@ export default function TaskHallPage() {
           {campaigns.map((t) => {
             const src = isLocalEnv() ? LOCAL_ASSET_VIDEO : t.video_url;
             const c = completion[t.id] || {};
+            const sf = sampleForm[t.id] || {};
             return (
               <div key={t.id} className="flex flex-col rounded-2xl border border-slate-800 bg-slate-900 p-4 shadow-lg">
                 {/* 素材视频：mock 阶段死锁本地静态资产桶 888.mp4 */}
@@ -342,6 +405,30 @@ export default function TaskHallPage() {
                   src={src} />
 
                 <h3 className="mt-3 font-semibold text-slate-100">{t.title}</h3>
+                {/* 寄样带货专属信息 */}
+                {t.campaign_type === "product_sample" && (
+                  <div className="mt-2 space-y-1.5">
+                    <span className="inline-block rounded-full bg-emerald-500/15 border border-emerald-600/40 px-3 py-1 text-xs font-bold text-emerald-300">
+                      📦 Free Sample + ${Number(t.payout ?? 12).toFixed(2)} Payout
+                    </span>
+                    {t.product_name && (
+                      <p className="text-xs text-emerald-300">
+                        <span className="font-semibold">Product:</span> {t.product_name}
+                      </p>
+                    )}
+                    {t.product_description && (
+                      <p className="text-[11px] leading-relaxed text-slate-400">{t.product_description}</p>
+                    )}
+                    {t.brand_tag && (
+                      <p className="text-xs text-slate-300">
+                        <span className="font-semibold text-cyan-300">Title @:</span> {t.brand_tag}
+                      </p>
+                    )}
+                    {t.comment_link_required && (
+                      <p className="text-xs text-slate-400">💬 Product link required in comments</p>
+                    )}
+                  </div>
+                )}
                 {t.caption_text && (
                   <p className="mt-1 text-sm leading-relaxed text-slate-400">{t.caption_text}</p>
                 )}
@@ -368,6 +455,35 @@ export default function TaskHallPage() {
                   <button onClick={openTikTokApp}
                     className="flex-1 rounded-lg border border-cyan-600/50 bg-cyan-900/20 px-3 py-2 text-xs font-medium text-cyan-300 hover:bg-cyan-900/40">📱 Open TikTok App</button>
                 </div>
+
+                {/* 寄样任务：申请免费样品（填美国收货地址 + GPS 校验） */}
+                {t.campaign_type === "product_sample" && (
+                  <div className="mt-3 rounded-xl border border-emerald-700/50 bg-emerald-950/30 p-3">
+                    <p className="text-xs font-semibold text-emerald-300">📦 Claim the Free Sample</p>
+                    <p className="mt-1 text-[11px] text-slate-500">
+                      Enter your US shipping address, then pass the GPS check. We&apos;ll ship the sample.
+                    </p>
+                    <input
+                      value={sf.address || ""}
+                      onChange={(e) => setSampleFor(t.id, { address: e.target.value })}
+                      placeholder="Full US shipping address"
+                      className="mt-2 w-full rounded-lg border border-emerald-800/50 bg-slate-900 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                    <button
+                      onClick={() => applySample(t.id)}
+                      disabled={sf.state === "submitting"}
+                      className="mt-2 w-full rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
+                    >
+                      {sf.state === "submitting" ? "🛰️ Locating & requesting..." : "Request Free Sample"}
+                    </button>
+                    {sf.state === "success" && (
+                      <p className="mt-2 rounded-lg bg-emerald-900/40 border border-emerald-600/40 p-2 text-xs text-emerald-300">{sf.msg}</p>
+                    )}
+                    {sf.state === "error" && (
+                      <p className="mt-2 rounded-lg bg-rose-900/40 border border-rose-600/40 p-2 text-xs text-rose-300">{sf.msg}</p>
+                    )}
+                  </div>
+                )}
 
                 {/* 硬件 GPS 校验按钮（TaskButton 联动，传真实 workerId + 边界） */}
                 <div className="mt-3">

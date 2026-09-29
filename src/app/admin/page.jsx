@@ -40,6 +40,13 @@ export default function MerchantConsole() {
   const [totalSlots, setTotalSlots] = useState("");
   const [payoutRate, setPayoutRate] = useState("");
   const [auditHours, setAuditHours] = useState("48"); // 人工核验超时自动放行窗口（小时），默认 48h
+  // ---- 任务类型 + 寄样带货字段 ----
+  const [campaignType, setCampaignType] = useState("video_post"); // video_post=视频代发 / product_sample=寄样带货
+  const [productName, setProductName] = useState(""); // 寄样：产品名
+  const [productDescription, setProductDescription] = useState(""); // 寄样：产品说明
+  const [brandTag, setBrandTag] = useState(""); // 寄样：标题@的品牌账号
+  const [commentLinkRequired, setCommentLinkRequired] = useState(true); // 寄样：评论区挂链接
+  const [platformFee, setPlatformFee] = useState("4"); // 平台单条服务费（默认 $4）
   const [publishState, setPublishState] = useState("idle");
   const [publishMsg, setPublishMsg] = useState("");
   const [lastCampaignId, setLastCampaignId] = useState(null);
@@ -196,14 +203,20 @@ export default function MerchantConsole() {
         body: JSON.stringify({
           merchantId, // 商户真实 UID（鉴权会话）
           title,
+          campaign_type: campaignType, // 任务类型：video_post / product_sample
           video_url: videoUrl,
           caption_text: captionText,
           target_account: targetAccount, // 可选目标发布号（UGC 模式非核心锚点）
           brand_hashtag: brandHashtag, // 品牌话题（UGC：老外创作时带上）
           content_brief: contentBrief, // 内容要求/创作指引（UGC 核心）
+          // 寄样带货字段（campaign_type=product_sample 时生效）
+          product_name: productName,
+          product_description: productDescription,
+          brand_tag: brandTag,
+          comment_link_required: commentLinkRequired,
           target_hashtags: [],
           geotargeting_config: { enabled: false },
-          escrow_summary: { total_slots: slots, payout_rate: rate, platform_fee: 1 },
+          escrow_summary: { total_slots: slots, payout_rate: rate, platform_fee: Number(platformFee) > 0 ? Number(platformFee) : 4 },
           audit_strategy: { mode: "manual", auto_approve_after_hours: Number(auditHours) > 0 ? Number(auditHours) : 48 },
         }),
       });
@@ -388,6 +401,103 @@ export default function MerchantConsole() {
           <p className="text-xs text-slate-500">资金（名额 ×（佣金 + 平台服务费））在作品核验前托管冻结。</p>
 
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            {/* 0) 任务类型切换：视频代发 / 寄样带货 */}
+            <div className="sm:col-span-2">
+              <label className="block text-sm text-slate-300">Campaign Type</label>
+              <p className="text-xs text-slate-500">任务类型（决定老外怎么完成任务）</p>
+              <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => setCampaignType("video_post")}
+                  className={`rounded-xl border p-4 text-left transition-all ${
+                    campaignType === "video_post"
+                      ? "border-purple-500 bg-purple-900/30 shadow-[0_0_18px_rgba(168,85,247,0.2)]"
+                      : "border-gray-700 bg-slate-800"
+                  }`}
+                >
+                  <p className="font-semibold text-slate-100">🎥 视频代发</p>
+                  <p className="mt-1 text-xs text-slate-400">商家提供视频素材，老外用自己账号发布 + 品牌话题</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCampaignType("product_sample")}
+                  className={`rounded-xl border p-4 text-left transition-all ${
+                    campaignType === "product_sample"
+                      ? "border-emerald-500 bg-emerald-900/30 shadow-[0_0_18px_rgba(16,185,129,0.2)]"
+                      : "border-gray-700 bg-slate-800"
+                  }`}
+                >
+                  <p className="font-semibold text-slate-100">📦 寄样带货（免费样品 + 佣金）</p>
+                  <p className="mt-1 text-xs text-slate-400">商家邮寄产品，老外真实使用拍摄 + 评论挂链接 + 标题@品牌号</p>
+                </button>
+              </div>
+            </div>
+
+            {/* 平台单条服务费（平台收入核心；商家发单时托管冻结，核验放行后归平台） */}
+            <div className="sm:col-span-2">
+              <label className="block text-sm text-slate-300">Platform Fee ($/task)</label>
+              <p className="text-xs text-slate-500">平台单条服务费（美元/任务，托管冻结，核验放行后归平台）</p>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={platformFee}
+                onChange={(e) => setPlatformFee(e.target.value)}
+                placeholder="e.g. 4.00"
+                className="mt-1 w-full rounded-xl bg-slate-800 border border-gray-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+
+            {/* 寄样带货专属字段（仅 campaign_type=product_sample 显示） */}
+            {campaignType === "product_sample" && (
+              <>
+                <div className="sm:col-span-2">
+                  <label className="block text-sm text-slate-300">Product Name</label>
+                  <p className="text-xs text-slate-500">寄样产品名（美国老外将收到的样品）</p>
+                  <input
+                    type="text"
+                    value={productName}
+                    onChange={(e) => setProductName(e.target.value)}
+                    placeholder="e.g. Smart LED Ring Light"
+                    className="mt-1 w-full rounded-xl bg-slate-800 border border-gray-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-sm text-slate-300">Product Description / 样品说明</label>
+                  <p className="text-xs text-slate-500">告诉老外寄什么样品、怎么拍（英文）</p>
+                  <textarea
+                    value={productDescription}
+                    onChange={(e) => setProductDescription(e.target.value)}
+                    placeholder="Free sample — you keep it. Film an honest unboxing/review on your own account."
+                    rows={2}
+                    className="mt-1 w-full rounded-xl bg-slate-800 border border-gray-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-sm text-slate-300">Brand Tag (@ 标题账号)</label>
+                  <p className="text-xs text-slate-500">要求老外在视频标题@的品牌账号（如 @fv138888）</p>
+                  <input
+                    type="text"
+                    value={brandTag}
+                    onChange={(e) => setBrandTag(e.target.value)}
+                    placeholder="例如: @fv138888"
+                    className="mt-1 w-full rounded-xl bg-slate-800 border border-gray-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="flex items-start gap-2 text-sm text-slate-300">
+                    <input
+                      type="checkbox"
+                      checked={commentLinkRequired}
+                      onChange={(e) => setCommentLinkRequired(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 rounded border-gray-600 bg-slate-800 text-emerald-500 focus:ring-emerald-500"
+                    />
+                    <span>Require product link in comments（要求老外在评论区挂商品链接）</span>
+                  </label>
+                </div>
+              </>
+            )}
+
             {/* 1) 品牌话题 + 内容要求 + 目标账号（UGC 模式：前两者为核心，目标账号可选） */}
             <div className="sm:col-span-2">
               <label className="block text-sm text-slate-300">Brand Hashtag</label>

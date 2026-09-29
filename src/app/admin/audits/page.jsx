@@ -66,11 +66,14 @@ export default function AdminAuditsPage() {
       });
       const j = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(j?.error || `HTTP ${res.status}`);
+      const row = audits.find((x) => x.submissionId === submissionId);
+      const payout = Number(row?.payout ?? 3).toFixed(2);
+      const fee = Number(row?.platformFee ?? 4).toFixed(2);
       setMsg({
         type: "success",
         text:
           decision === "approve"
-            ? `已放行：老外 +$3.00、平台 +$1.00`
+            ? `已放行：老外 +$${payout}、平台 +$${fee}`
             : `已拒付：状态置为 rejected`,
       });
       load();
@@ -190,6 +193,17 @@ export default function AdminAuditsPage() {
                 {/* 任务信息 */}
                 <div className="text-xs text-slate-400 space-y-1 mb-3">
                   <div>任务：{a.campaignTitle || a.campaignId}</div>
+                  {a.campaignType === "product_sample" && (
+                    <div className="rounded-lg bg-emerald-950/30 border border-emerald-800/40 px-3 py-2 mt-1 space-y-0.5">
+                      <div className="text-emerald-300 font-semibold">📦 寄样带货任务</div>
+                      {a.productName && <div>产品：{a.productName}</div>}
+                      {a.brandTag && <div>标题@：{a.brandTag}</div>}
+                      {a.commentLinkRequired && <div>要求：评论区挂商品链接</div>}
+                      {a.shippingAddress && (
+                        <div>📮 收货地址：{a.shippingAddress}</div>
+                      )}
+                    </div>
+                  )}
                   <div>Worker：<span className="font-mono text-slate-300">{a.workerId}</span></div>
                   {a.latitude != null && (
                     <div>
@@ -225,7 +239,7 @@ export default function AdminAuditsPage() {
                     disabled={busyId === a.submissionId || !a.publishedVideoUrl}
                     className="flex-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed py-2.5 font-semibold transition"
                   >
-                    {busyId === a.submissionId ? "⏳ 结算中..." : "✅ 放行（老外 +$3 / 平台 +$1）"}
+                    {busyId === a.submissionId ? "⏳ 结算中..." : `✅ 放行（老外 +$${Number(a.payout ?? 3).toFixed(2)} / 平台 +$${Number(a.platformFee ?? 4).toFixed(2)}）`}
                   </button>
                   <button
                     onClick={() => decide(a.submissionId, "reject")}
