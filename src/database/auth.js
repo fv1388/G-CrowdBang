@@ -105,6 +105,47 @@ function clearMockSession() {
   }
 }
 
+// Google 后端会话（localStorage）：供 GSI 一键登录成功后写入本地会话。
+// 作用：走 /api/auth/google 服务端校验建号后，即使 Firebase 原生 Google
+// provider 未启用（signInWithCredential 失败），页面 useAuthSession 仍能
+// 读到该本地会话，保证登录后可正常进入对应角色空间（不依赖 provider 启用）。
+const GOOGLE_SESSION_KEY = "gb_google_session";
+
+function readGoogleSession() {
+  try {
+    const raw = globalThis?.localStorage?.getItem(GOOGLE_SESSION_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+function writeGoogleSession(session) {
+  try {
+    globalThis?.localStorage?.setItem(GOOGLE_SESSION_KEY, JSON.stringify(session));
+  } catch {
+    /* ignore */
+  }
+}
+function clearGoogleSession() {
+  try {
+    globalThis?.localStorage?.removeItem(GOOGLE_SESSION_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** 供前端 Google 登录成功后持久化本地会话（uid / email / role）。 */
+export function persistGoogleSession(uid, email, role) {
+  const s = {
+    uid,
+    email,
+    role: String(role || "WORKER").toUpperCase(),
+    tokenType: "google-local",
+  };
+  writeGoogleSession(s);
+  return s;
+}
+
 // mock：写入确定性会话并返回
 function mockSession(uid, role, email) {
   const session = { uid, role, email, tokenType: "mock" };
@@ -244,8 +285,9 @@ export async function signInWithEmail(email, password) {
   return extractSession(userCredential.user, "worker");
 }
 
-// 登出系统大闸
+// 登出系统大闸（同时清理 Google 本地会话，防止登出后页面仍被放行）
 export async function logOutSession() {
+  clearGoogleSession();
   if (firebaseConfigReady()) {
     await fbSignOut(getAuthInstance());
   } else {
@@ -291,7 +333,9 @@ export function useAuthSession(defaultMockRole = "WORKER") {
         const s = await extractSession(user, "worker");
         setSession(s);
       } else {
-        setSession(null);
+        // Firebase 无会话时，兜底读取 Google 后端会话（GSI 登录走后端校验 + 本地会话）
+        const g = readGoogleSession();
+        setSession(g ? { uid: g.uid, role: g.role, email: g.email } : null);
       }
       setLoading(false);
     });

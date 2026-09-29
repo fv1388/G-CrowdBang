@@ -29,6 +29,7 @@ import {
   signUpWithEmail,
   signInWithEmail,
   firebaseConfigReady,
+  persistGoogleSession,
 } from "@/database/auth";
 
 // Google 一键登录 Client ID（官方 GSI SDK）
@@ -166,7 +167,15 @@ export default function AuthPage() {
       } catch (fbErr) {
         console.warn("[auth] firebase credential link skipped", fbErr?.code);
       }
-      // 3) 按后端返回的角色跳转到对应空间
+      // 3) 持久化 Google 后端会话到本地（供 useAuthSession 读取，保证跳转后页面放行）
+      if (data?.uid) {
+        try {
+          persistGoogleSession(data.uid, data.email, data.role);
+        } catch {
+          /* ignore */
+        }
+      }
+      // 4) 按后端返回的角色跳转到对应空间
       window.location.href = routeByRole(data.role);
     } catch (err) {
       console.error("[Google Auth]", err);
