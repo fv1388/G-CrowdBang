@@ -293,7 +293,6 @@ export default function MerchantConsole() {
           </span>
           <Link href="/admin/campaigns" className="text-sm font-medium text-gray-600 hover:text-gray-800">My Campaigns</Link>
           <Link href="/admin/audits" className="text-sm font-medium text-amber-700 hover:text-amber-200">Audit Console</Link>
-          <Link href="/shop/tasks" className="text-sm font-medium text-gray-600 hover:text-gray-800">Task Hall</Link>
           <span className="ml-auto text-xs text-gray-500">UID: {merchantId}</span>
         </div>
       </nav>
