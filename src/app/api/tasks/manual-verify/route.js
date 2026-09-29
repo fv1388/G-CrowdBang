@@ -85,18 +85,21 @@ async function resolveCampaignPayout(campaignId) {
     try {
       const snap = await db.collection("campaigns").doc(campaignId).get();
       if (snap.exists) {
-        const esc = snap.data()?.escrow_summary || {};
+        const d = snap.data();
+        const esc = d?.escrow_summary || {};
         const p = Number(esc.payout_rate) > 0 ? Number(esc.payout_rate) : 3.0;
         const f = Number(esc.platform_fee) >= 0 ? Number(esc.platform_fee) : 1.0;
-        return { workerPayout: p, platformFee: f };
+        const retentionDays = Number(d?.retention_days) > 0 ? Number(d.retention_days) : 7;
+        return { workerPayout: p, platformFee: f, retentionDays };
       }
     } catch (_) { /* 读不到回退默认 */ }
-    return { workerPayout: WORKER_PAYOUT, platformFee: PLATFORM_FEE };
+    return { workerPayout: WORKER_PAYOUT, platformFee: PLATFORM_FEE, retentionDays: 7 };
   }
   const camp = mockCampaigns.get(campaignId);
   const p = Number(camp?.payout) > 0 ? Number(camp.payout) : WORKER_PAYOUT;
   const f = Number(camp?.platformFee) >= 0 ? Number(camp.platformFee) : PLATFORM_FEE;
-  return { workerPayout: p, platformFee: f };
+  const retentionDays = Number(camp?.retentionDays) > 0 ? Number(camp.retentionDays) : 7;
+  return { workerPayout: p, platformFee: f, retentionDays };
 }
 
 export async function POST(request) {
@@ -217,9 +220,15 @@ export async function POST(request) {
       );
     }
 
-    // ---- 决策 B：approve（放行）→ 原子托管分账 ----
-    // 分账按任务设定（达人佣金 + 平台服务费），不再写死 $3/$1
-    const { workerPayout, platformFee } = await resolveCampaignPayout(submission.campaign_id);
+    // ---- 决策 B：approve（放行）→ 原子托管分账（两段式结算）----
+    // 防"拿钱删视频"：核验通过只释放 70% 佣金进老外可提现余额，30% 冻结至保留期届满；
+    // 保留期内视频若被删除/转私密，冻结的 30% 扣除并拉黑（见 /api/tasks/release-hold）。
+    const { workerPayout, platformFee, retentionDays } = await resolveCampaignPayout(submission.campaign_id);
+    const HOLD_RATIO = 0.30;
+    const releasedUsd = Math.round(workerPayout * (1 - HOLD_RATIO) * 100) / 100; // 70%
+    const holdUsd = Math.round(workerPayout * HOLD_RATIO * 100) / 100;           // 30%
+    const releaseAtIso = new Date(Date.now() + retentionDays * 24 * 60 * 60 * 1000).toISOString();
+
     if (firebaseAvailable) {
       await db.runTransaction(async (tx) => {
         const snap = await tx.get(subRef);
@@ -234,13 +243,24 @@ export async function POST(request) {
           "audit_metadata.audited_by": merchantId,
           "audit_metadata.audited_at": nowIso,
           submitted_at: nowIso,
-          payout_status: "paid",
+          payout_status: "holding",           // 部分释放，等待保留期
+          retention_status: "HOLDING",        // 保留期冻结中
+          released_worker_usd: releasedUsd,   // 已释放（可提现）
+          hold_worker_usd: holdUsd,           // 冻结中（不可提现）
+          retention_release_at: releaseAtIso,
           updated_at: nowIso,
         });
 
-        // 佣金：达人佣金划入接单人可用提现余额（users/<worker_id>.balance_usd）
+        // 佣金：70% 进可提现余额，30% 进冻结余额（保留期届满后才可提现）
         const workerRef = db.collection("users").doc(data.worker_id);
-        tx.set(workerRef, { balance_usd: FieldValue.increment(workerPayout) }, { merge: true });
+        tx.set(
+          workerRef,
+          {
+            balance_usd: FieldValue.increment(releasedUsd),
+            hold_balance_usd: FieldValue.increment(holdUsd),
+          },
+          { merge: true }
+        );
 
         // 平台服务费：计入总部官方利润账户
         const platformRef = db.collection("platform_accounts").doc("official_profit");
@@ -250,7 +270,7 @@ export async function POST(request) {
           { merge: true }
         );
 
-        // 递减任务冻结池 + 累加已用名额（该单托管资金已完成分配）
+        // 递减任务冻结池 + 累加已用名额（整单托管已完成分配：释放 + 冻结 + 平台费）
         tx.update(db.collection("campaigns").doc(data.campaign_id), {
           escrow_locked_usd: FieldValue.increment(-(workerPayout + platformFee)),
           slots_used: FieldValue.increment(1),
@@ -272,18 +292,30 @@ export async function POST(request) {
         "audit_metadata.audited_by": merchantId,
         "audit_metadata.audited_at": nowIso,
         submitted_at: nowIso,
-        payout_status: "paid",
+        payout_status: "holding",
+        retention_status: "HOLDING",
+        released_worker_usd: releasedUsd,
+        hold_worker_usd: holdUsd,
+        retention_release_at: releaseAtIso,
         updated_at: nowIso,
       });
-      const workerBalance = (mockUsers.get(m.worker_id)?.balance_usd || 0) + workerPayout;
-      mockUsers.set(m.worker_id, { balance_usd: workerBalance });
+      const w = mockUsers.get(m.worker_id) || {};
+      mockUsers.set(m.worker_id, {
+        balance_usd: (w.balance_usd || 0) + releasedUsd,
+        hold_balance_usd: (w.hold_balance_usd || 0) + holdUsd,
+      });
       mockPlatform.service_fee_balance_usd += platformFee;
     }
 
     return NextResponse.json(
       {
         result: "verified",
-        payout: { worker_usd: workerPayout, platform_fee_usd: platformFee },
+        payout: {
+          worker_released_usd: releasedUsd,
+          worker_hold_usd: holdUsd,
+          hold_release_at: releaseAtIso,
+          platform_fee_usd: platformFee,
+        },
         source: firebaseAvailable ? "firestore" : "mock",
       },
       { status: 200 }
