@@ -204,6 +204,11 @@ export default function Home() {
         <p className="mt-1 text-xs text-slate-600">
           Real creators · Verified locations · Transparent escrow · Deletion-proof payout
         </p>
+        <div className="mt-4 text-sm text-slate-400">
+          <span className="inline-block">📧 suan147@qq.com</span>
+          <span className="mx-3 text-slate-600">|</span>
+          <span className="inline-block">📞 微信 / 电话：19955287035</span>
+        </div>
       </footer>
     </main>
   );
