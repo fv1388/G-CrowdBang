@@ -399,6 +399,9 @@ export default function AuthPage() {
           <a href="/" className="block text-xs text-gray-500 hover:text-gray-700">
             ← Back to landing / 返回首页
           </a>
+          <button type="button" onClick={() => window.history.back()} className="block text-xs text-gray-500 hover:text-gray-700">
+            ← Back to previous page / 返回上一页
+          </button>
         </div>
 
         {/* 底部能力徽章 */}

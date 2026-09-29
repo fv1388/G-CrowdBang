@@ -309,6 +309,7 @@ export default function TaskHallPage() {
       <nav className="border-b border-gray-200 bg-white">
         <div className="max-w-6xl mx-auto px-6 flex items-center gap-6 py-3">
           <Link href="/" className="text-sm font-medium text-gray-500 hover:text-gray-800">← Home · 返回首页</Link>
+          <button type="button" onClick={() => window.history.back()} className="text-sm font-medium text-gray-500 hover:text-gray-800">← Back · 返回上一页</button>
           <Link href="/shop/tasks" className="text-sm font-medium text-indigo-400 border-b-2 border-indigo-500 pb-1">Task Hall</Link>
           <Link href="/workers" className="text-sm font-medium text-gray-600 hover:text-gray-900">My Tasks &amp; Earnings</Link>
           <span className="ml-auto text-xs text-gray-500">UID: {workerId}</span>

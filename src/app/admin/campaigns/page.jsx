@@ -91,7 +91,10 @@ export default function MerchantCampaigns() {
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900">
       <div className="max-w-5xl mx-auto px-6 py-12">
-        <Link href="/" className="text-sm font-medium text-gray-500 hover:text-gray-800">← Home · 返回首页</Link>
+        <div className="flex items-center gap-4">
+          <Link href="/" className="text-sm font-medium text-gray-500 hover:text-gray-800">← Home · 返回首页</Link>
+          <button type="button" onClick={() => window.history.back()} className="text-sm font-medium text-gray-500 hover:text-gray-800">← Back · 返回上一页</button>
+        </div>
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold">My Campaigns</h1>

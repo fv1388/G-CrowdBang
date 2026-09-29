@@ -182,6 +182,7 @@ export default function ConnectTikTok() {
       <nav className="border-b border-slate-200 bg-white">
         <div className="max-w-4xl mx-auto px-6 flex items-center gap-6 py-3">
           <Link href="/" className="text-sm font-medium text-slate-500 hover:text-slate-800">← Home · 返回首页</Link>
+          <button type="button" onClick={() => window.history.back()} className="text-sm font-medium text-slate-500 hover:text-slate-800">← Back · 返回上一页</button>
           <Link href="/admin" className="text-sm font-medium text-slate-500 hover:text-slate-800">Merchant Console · 商户控制台</Link>
           <Link href="/admin/campaigns" className="text-sm font-medium text-slate-500 hover:text-slate-800">My Campaigns · 我的任务</Link>
           <span className="text-sm font-medium text-indigo-600 border-b-2 border-indigo-600 pb-1">Connect TikTok · 连接 TikTok</span>

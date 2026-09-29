@@ -121,7 +121,10 @@ export default function AdminAuditsPage() {
   return (
     <main className="min-h-screen bg-gray-50 text-gray-900 p-6">
       <div className="max-w-4xl mx-auto">
-        <Link href="/" className="text-sm font-medium text-gray-500 hover:text-gray-800">← Home · 返回首页</Link>
+        <div className="flex items-center gap-4">
+          <Link href="/" className="text-sm font-medium text-gray-500 hover:text-gray-800">← Home · 返回首页</Link>
+          <button type="button" onClick={() => window.history.back()} className="text-sm font-medium text-gray-500 hover:text-gray-800">← Back · 返回上一页</button>
+        </div>
         {/* 顶部栏 */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div>

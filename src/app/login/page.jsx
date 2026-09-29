@@ -193,6 +193,9 @@ export default function LoginPage() {
         <Link href="/" className="mt-3 block text-xs text-indigo-500 hover:underline">
           ← Back to landing / 返回首页
         </Link>
+        <button type="button" onClick={() => window.history.back()} className="mt-1 block text-xs text-indigo-500 hover:underline">
+          ← Back to previous page / 返回上一页
+        </button>
       </div>
     </main>
   );
