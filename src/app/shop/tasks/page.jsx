@@ -424,7 +424,7 @@ export default function TaskHallPage() {
           <p className="mt-4 text-gray-500">No open bounties right now — check back soon.</p>
         )}
 
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
           {campaigns.map((t) => {
             // 防御①：数据损坏 / 已清空名额的任务优雅隐藏，防止长条形断层空白
             if (!t?.id) return null;
@@ -552,7 +552,11 @@ export default function TaskHallPage() {
                 </div>
 
                 {/* 完工证明对账单上传表单（Form Gateway） */}
-                <div className="mt-4 rounded-xl border border-gray-300 bg-gray-50 p-3">
+                <div className="mt-3 flex-1 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs leading-relaxed text-indigo-800">
+                  <p className="font-semibold">🔒 Escrow &amp; Audit</p>
+                  <p className="mt-1">Payout is held in escrow until our audit verifies your public link. Approvals release <b>${payoutRate.toFixed(2)}</b> to your balance.</p>
+                </div>
+                <div className="mt-auto rounded-xl border border-gray-300 bg-gray-50 p-3">
                   <p className="text-xs font-semibold text-gray-700">Proof of completion / 完工证明对账单</p>
                   <p className="mt-1 text-[11px] leading-relaxed text-gray-500">
                     Posted on your own account? Paste the public link and attach a timestamped TikTok success screenshot, then submit for audit.
