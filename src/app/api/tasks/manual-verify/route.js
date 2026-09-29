@@ -53,9 +53,11 @@ if (
   firebaseAvailable = false;
 }
 
-// 分账常量：$3.00 佣金（worker）+ $1.00 平台纯技术服务费（官方利润账户）
-const WORKER_PAYOUT = 3.0;
-const PLATFORM_FEE = 1.0;
+// 分账兜底默认（真库任务取 escrow_summary.payout_rate / platform_fee）
+const WORKER_PAYOUT = 10.0;
+const PLATFORM_FEE = 2.0;
+// 返工次数上限：最多 2 次；第 3 次仍不合格只能拒付，保全托管
+const MAX_REWORK = 2;
 
 /**
  * 校验该笔对账是否归当前商户所有（防止接单人自审自放 / 越权放款）。
@@ -103,8 +105,8 @@ export async function POST(request) {
     if (!submissionId || !merchantId) {
       return NextResponse.json({ error: "MISSING_FIELDS" }, { status: 400 });
     }
-    if (decision !== "approve" && decision !== "reject") {
-      return NextResponse.json({ error: "INVALID_DECISION", hint: "use 'approve' or 'reject'" }, { status: 400 });
+    if (decision !== "approve" && decision !== "reject" && decision !== "rework") {
+      return NextResponse.json({ error: "INVALID_DECISION", hint: "use 'approve', 'reject' or 'rework'" }, { status: 400 });
     }
 
     // 1) 取回对账单
@@ -138,6 +140,34 @@ export async function POST(request) {
     }
 
     const nowIso = new Date().toISOString();
+
+    // ---- 决策 R：rework（需返工）——视频质量不合格，退回老外重拍；超过限次后只能放行/拒付 ----
+    if (decision === "rework") {
+      const cur = Number(submission.audit_metadata?.revision_count || 0);
+      if (cur >= MAX_REWORK) {
+        return NextResponse.json(
+          { error: "REWORK_LIMIT", hint: `already reworked ${cur} times; only approve or reject now` },
+          { status: 409 }
+        );
+      }
+      const update = {
+        "audit_metadata.verification_status": "revision_requested",
+        "audit_metadata.revision_count": cur + 1,
+        "audit_metadata.revision_reason": note || "Video quality did not meet merchant requirements",
+        "audit_metadata.audited_by": merchantId,
+        "audit_metadata.audited_at": nowIso,
+        updated_at: nowIso,
+      };
+      if (firebaseAvailable) {
+        await subRef.update(update);
+      } else {
+        applyFlatUpdate(mockSubmissions.get(submissionId), update);
+      }
+      return NextResponse.json(
+        { result: "rework_requested", revision_count: cur + 1, source: firebaseAvailable ? "firestore" : "mock" },
+        { status: 200 }
+      );
+    }
 
     // ---- 决策 A：reject（拒付）——状态物理置为 rejected，不触发任何分账 ----
     if (decision === "reject") {

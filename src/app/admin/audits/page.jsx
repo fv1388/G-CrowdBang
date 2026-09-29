@@ -23,6 +23,7 @@ export default function AdminAuditsPage() {
   const [fetching, setFetching] = useState(true);
   const [busyId, setBusyId] = useState(null);
   const [msg, setMsg] = useState(null);
+  const [noteBySub, setNoteBySub] = useState({});
 
   // 鉴权卡点：仅 MERCHANT 可访问（render 派生，避免 effect 内同步 setState）
   const denied = !loading && session?.role?.toUpperCase() !== "MERCHANT";
@@ -54,6 +55,10 @@ export default function AdminAuditsPage() {
 
   // 放行 / 拒付
   const decide = async (submissionId, decision) => {
+    if (decision === "rework" && !(noteBySub[submissionId] || "").trim()) {
+      setMsg({ type: "error", text: "返工需要填写退回原因，请先在下方输入原因。" });
+      return;
+    }
     setBusyId(submissionId);
     setMsg(null);
     try {
@@ -64,7 +69,7 @@ export default function AdminAuditsPage() {
           submissionId,
           merchantId: session?.uid || process.env.NEXT_PUBLIC_MERCHANT_ID || "mch_placeholder",
           decision,
-          note: decision === "approve" ? "Merchant manual approve" : "Merchant manual reject",
+          note: (noteBySub[submissionId] || "").trim() || (decision === "approve" ? "Merchant manual approve" : "Merchant manual reject"),
         }),
       });
       const j = await res.json().catch(() => ({}));
@@ -77,7 +82,9 @@ export default function AdminAuditsPage() {
         text:
           decision === "approve"
             ? `已放行：老外 +$${payout}、平台 +$${fee}`
-            : `已拒付：状态置为 rejected`,
+            : decision === "rework"
+              ? `已退回返工：等待老外重新提交`
+              : `已拒付：状态置为 rejected`,
       });
       load();
     } catch (e) {
@@ -242,14 +249,32 @@ export default function AdminAuditsPage() {
                   ) : null}
                 </div>
 
-                {/* 放行 / 拒付 */}
-                <div className="flex gap-2">
+                {/* 返工原因输入（需返工时必填） */}
+                <div className="mb-2">
+                  <input
+                    type="text"
+                    value={noteBySub[a.submissionId] || ""}
+                    onChange={(e) => setNoteBySub((m) => ({ ...m, [a.submissionId]: e.target.value }))}
+                    placeholder={`返工原因（例如：画质太糊 / 没按拍摄要求 / 未拍产品）· 已返工 ${Number(a.revisionCount ?? 0)} 次 / 上限 2 次`}
+                    className="w-full rounded-lg bg-gray-50 border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+
+                {/* 放行 / 需返工 / 拒付 */}
+                <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => decide(a.submissionId, "approve")}
                     disabled={busyId === a.submissionId || !a.publishedVideoUrl}
                     className="flex-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed py-2.5 font-semibold transition"
                   >
-                    {busyId === a.submissionId ? "⏳ 结算中..." : `✅ 放行（老外 +$${Number(a.payout ?? 3).toFixed(2)} / 平台 +$${Number(a.platformFee ?? 4).toFixed(2)}）`}
+                    {busyId === a.submissionId ? "⏳ 结算中..." : `✅ 放行（老外 +$${Number(a.payout ?? 10).toFixed(2)} / 平台 +$${Number(a.platformFee ?? 2).toFixed(2)}）`}
+                  </button>
+                  <button
+                    onClick={() => decide(a.submissionId, "rework")}
+                    disabled={busyId === a.submissionId}
+                    className="flex-1 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-40 py-2.5 font-semibold transition"
+                  >
+                    {busyId === a.submissionId ? "⏳ 处理中..." : "🔁 需返工（重拍）"}
                   </button>
                   <button
                     onClick={() => decide(a.submissionId, "reject")}

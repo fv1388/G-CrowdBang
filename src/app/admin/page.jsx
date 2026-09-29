@@ -37,7 +37,7 @@ export default function MerchantConsole() {
   const [videoFile, setVideoFile] = useState(null); // 选中的本地 mp4 文件对象
   const [caption, setCaption] = useState(""); // 引流带货文案（caption_text）
   const [totalSlots, setTotalSlots] = useState("");
-  const [payoutRate, setPayoutRate] = useState("");
+  const [payoutRate, setPayoutRate] = useState("10"); // 老外单条佣金（默认 $10）
   const [auditHours, setAuditHours] = useState("48"); // 人工核验超时自动放行窗口（小时），默认 48h
   // ---- 任务类型 + 寄样带货字段 ----
   const [campaignType, setCampaignType] = useState("video_post"); // video_post=视频代发 / product_sample=寄样带货
@@ -45,7 +45,7 @@ export default function MerchantConsole() {
   const [productDescription, setProductDescription] = useState(""); // 寄样：产品说明
   const [brandTag, setBrandTag] = useState(""); // 寄样：标题@的品牌账号
   const [commentLinkRequired, setCommentLinkRequired] = useState(true); // 寄样：评论区挂链接
-  const [platformFee, setPlatformFee] = useState("4"); // 平台单条服务费（默认 $4）
+  const [platformFee, setPlatformFee] = useState("2"); // 平台单条服务费（默认 $2）
   const [platform, setPlatform] = useState("tiktok"); // 目标发布平台（多平台 UGC）
   const [publishState, setPublishState] = useState("idle");
   const [publishMsg, setPublishMsg] = useState("");
@@ -216,7 +216,7 @@ export default function MerchantConsole() {
           comment_link_required: commentLinkRequired,
           target_hashtags: [],
           geotargeting_config: { enabled: false },
-          escrow_summary: { total_slots: slots, payout_rate: rate, platform_fee: Number(platformFee) > 0 ? Number(platformFee) : 4 },
+          escrow_summary: { total_slots: slots, payout_rate: rate, platform_fee: Number(platformFee) > 0 ? Number(platformFee) : 2 },
           audit_strategy: { mode: "manual", auto_approve_after_hours: Number(auditHours) > 0 ? Number(auditHours) : 48 },
         }),
       });

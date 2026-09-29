@@ -80,7 +80,7 @@ export async function POST(request) {
 
     const ownerId = currentMerchantId(merchantId);
     // 平台服务费：支持前端显式传入（默认 $4/单），覆盖寄样/视频任务的托管抽成
-    const platformFee = Number(platform_fee) >= 0 ? Number(platform_fee) : (Number(escrow_summary?.platform_fee) >= 0 ? Number(escrow_summary.platform_fee) : 4.0);
+    const platformFee = Number(platform_fee) >= 0 ? Number(platform_fee) : (Number(escrow_summary?.platform_fee) >= 0 ? Number(escrow_summary.platform_fee) : 2.0);
     const campaign = {
       campaign_id: null,
       owner_merchant_id: ownerId,
@@ -179,13 +179,13 @@ export async function POST(request) {
         productDescription: campaign.product?.description,
         brandTag: campaign.brand_tag,
         commentLinkRequired: campaign.comment_link_required,
-        platformFee: escrow.platform_fee ?? 4.0,
+        platformFee: escrow.platform_fee ?? 2.0,
         audit_strategy: campaign.audit_strategy,
         video_url: campaign.video_url,
         caption_text: campaign.caption_text,
         city: geo.enabled ? geo.target_city : "Anywhere",
         state: geo.enabled ? geo.target_state : "US",
-        payout: escrow.payout_rate ?? 3.0,
+        payout: escrow.payout_rate ?? 10.0,
         slotsRemaining: Math.max(0, (escrow.total_slots || 0) - (escrow.slots_used || 0)),
         boundary: {
           enabled: !!geo.enabled,

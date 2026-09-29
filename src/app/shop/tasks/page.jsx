@@ -46,6 +46,7 @@ export default function TaskHallPage() {
 
   // 收益余额（来自 /api/workers/my-submissions）
   const [balance, setBalance] = useState(0);
+  const [mySubs, setMySubs] = useState([]);
 
   // 提现表单状态
   const [amount, setAmount] = useState("");
@@ -135,6 +136,7 @@ export default function TaskHallPage() {
         if (!cancelled) {
           setCampaigns(listData.campaigns ?? []);
           setBalance(balData.balance_usd ?? 0);
+          setMySubs(balData.submissions ?? []);
           setLoadState("ok");
         }
       } catch (err) {
@@ -356,6 +358,25 @@ export default function TaskHallPage() {
         </div>
       </section>
 
+      {/* 返工提示：商家退回待重拍 */}
+      {mySubs.filter((s) => s.status === "revision_requested").length > 0 && (
+        <section className="max-w-6xl mx-auto px-6 pt-6">
+          <div className="rounded-2xl border border-amber-300 bg-amber-50 p-5">
+            <h3 className="font-bold text-amber-800">🔁 你的视频被商家退回，需要重拍后重新提交</h3>
+            <ul className="mt-2 space-y-2 text-sm text-amber-900">
+              {mySubs
+                .filter((s) => s.status === "revision_requested")
+                .map((s) => (
+                  <li key={s.submissionId}>
+                    Task <b>{s.campaignId}</b>：{s.revisionReason || "视频质量不符合要求"}（第 {Number(s.revisionCount ?? 0)} 次返工，上限 2 次）。
+                    请重拍后，在该任务卡片下方重新粘贴公开链接并提交。
+                  </li>
+                ))}
+            </ul>
+          </div>
+        </section>
+      )}
+
       {/* 钱包对账面板 + PayPal 提现 */}
       <section className="max-w-6xl mx-auto px-6 pt-6">
         <div className="rounded-2xl border border-gray-200 bg-white p-6">
@@ -422,8 +443,8 @@ export default function TaskHallPage() {
                   <div className="mt-2 space-y-1.5">
                     <span className="inline-block rounded-full bg-emerald-500/15 border border-emerald-300 px-3 py-1 text-xs font-bold text-emerald-700">
                       {t.campaign_type === "product_sample"
-                        ? `📦 Free Sample + $${Number(t.payout ?? 12).toFixed(2)} Payout`
-                        : `🎬 No Sample — $${Number(t.payout ?? 12).toFixed(2)} Payout (buy/have product)`}
+                        ? `📦 Free Sample + $${Number(t.payout ?? 10).toFixed(2)} Payout`
+                        : `🎬 No Sample — $${Number(t.payout ?? 10).toFixed(2)} Payout (buy/have product)`}
                     </span>
                     {t.product_name && (
                       <p className="text-xs text-emerald-700">
@@ -457,7 +478,7 @@ export default function TaskHallPage() {
 
                 <div className="mt-3 flex items-center justify-between text-sm">
                   <span className="rounded-full bg-indigo-50 px-3 py-1 text-indigo-700">📍 {t.city}, {t.state}</span>
-                  <span className="rounded-full bg-emerald-500/10 px-3 py-1 font-bold text-emerald-700">${(Number(t.payout ?? 3)).toFixed(2)} USD Verified Payout</span>
+                  <span className="rounded-full bg-emerald-500/10 px-3 py-1 font-bold text-emerald-700">${(Number(t.payout ?? 10)).toFixed(2)} USD Verified Payout</span>
                 </div>
 
                 {/* 下载/复制/App 唤醒（手动真机发布指引） */}

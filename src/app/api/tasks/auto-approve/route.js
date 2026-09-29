@@ -52,8 +52,8 @@ if (
   firebaseAvailable = false;
 }
 
-const WORKER_PAYOUT = 3.0;
-const PLATFORM_FEE = 1.0;
+const WORKER_PAYOUT = 10.0;
+const PLATFORM_FEE = 2.0;
 const DEFAULT_WINDOW_HOURS = 48; // 商家未设窗口时的默认保护窗口
 
 /** 读取任务的自动放行窗口（小时）。取不到则用默认 48h。 */
@@ -82,8 +82,8 @@ async function resolveCampaignPayout(campaignId) {
       const snap = await db.collection("campaigns").doc(campaignId).get();
       if (snap.exists) {
         const esc = snap.data()?.escrow_summary || {};
-        const p = Number(esc.payout_rate) > 0 ? Number(esc.payout_rate) : 3.0;
-        const f = Number(esc.platform_fee) >= 0 ? Number(esc.platform_fee) : 1.0;
+        const p = Number(esc.payout_rate) > 0 ? Number(esc.payout_rate) : 10.0;
+        const f = Number(esc.platform_fee) >= 0 ? Number(esc.platform_fee) : 2.0;
         return { workerPayout: p, platformFee: f };
       }
     } catch (_) { /* 读不到回退默认 */ }

@@ -55,6 +55,8 @@ export async function GET(request) {
             status: s.audit_metadata?.verification_status,
             payout: s.payout_status,
             claimedAt: s.claim_timestamp,
+            revisionCount: s.audit_metadata?.revision_count ?? 0,
+            revisionReason: s.audit_metadata?.revision_reason ?? null,
           }))
         : [
             {
@@ -91,6 +93,8 @@ export async function GET(request) {
         status: d.audit_metadata?.verification_status,
         payout: d.payout_status,
         claimedAt: d.claim_timestamp,
+        revisionCount: d.audit_metadata?.revision_count ?? 0,
+        revisionReason: d.audit_metadata?.revision_reason ?? null,
       };
     });
 

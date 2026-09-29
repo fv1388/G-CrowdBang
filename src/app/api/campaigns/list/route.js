@@ -54,7 +54,7 @@ const DEMO_SEED = [
     city: "Jacksonville",
     state: "FL",
     payout: 3.0,
-    platformFee: 1.0,
+    platformFee: 2.0,
     slotsRemaining: 12,
     boundary: { enabled: true, center: { latitude: 30.3322, longitude: -81.6557 }, radiusKm: 80, maxAcceptableAccuracyMeters: 200 },
   },
@@ -70,7 +70,7 @@ const DEMO_SEED = [
     city: "Orlando",
     state: "FL",
     payout: 3.0,
-    platformFee: 1.0,
+    platformFee: 2.0,
     slotsRemaining: 8,
     boundary: { enabled: true, center: { latitude: 28.5383, longitude: -81.3792 }, radiusKm: 80, maxAcceptableAccuracyMeters: 200 },
   },
@@ -86,7 +86,7 @@ const DEMO_SEED = [
     city: "Tampa",
     state: "FL",
     payout: 3.0,
-    platformFee: 1.0,
+    platformFee: 2.0,
     slotsRemaining: 15,
     boundary: { enabled: true, center: { latitude: 27.9506, longitude: -82.4572 }, radiusKm: 80, maxAcceptableAccuracyMeters: 200 },
   },
@@ -107,7 +107,7 @@ const DEMO_SEED = [
     city: "Miami",
     state: "FL",
     payout: 12.0,
-    platformFee: 4.0,
+    platformFee: 2.0,
     slotsRemaining: 20,
     boundary: { enabled: true, center: { latitude: 25.7617, longitude: -80.1918 }, radiusKm: 80, maxAcceptableAccuracyMeters: 200 },
   },
@@ -159,8 +159,8 @@ export async function GET() {
         comment_link_required: !!d.comment_link_required,
         city: geo.enabled ? geo.target_city : "Anywhere",
         state: geo.enabled ? geo.target_state : "US",
-        payout: escrow.payout_rate ?? 3.0, // 达人单条佣金
-        platform_fee: escrow.platform_fee ?? 4.0, // 平台单条服务费
+        payout: escrow.payout_rate ?? 10.0, // 达人单条佣金
+        platform_fee: escrow.platform_fee ?? 2.0, // 平台单条服务费
         slotsRemaining: Math.max(0, total - used),
         boundary: {
           enabled: !!geo.enabled,

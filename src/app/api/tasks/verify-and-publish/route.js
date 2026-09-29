@@ -136,8 +136,11 @@ export async function POST(request) {
           .where("worker_id", "==", workerId)
           .limit(5);
         const snap = await q.get();
+        // 接受 PENDING_AUDIT（首次）或 revision_requested（返工重提）的单，重提后状态回 PENDING_AUDIT
         const match = snap.docs.find(
-          (d) => d.data()?.audit_metadata?.verification_status === "PENDING_AUDIT"
+          (d) => ["PENDING_AUDIT", "revision_requested"].includes(
+            d.data()?.audit_metadata?.verification_status
+          )
         );
         if (!match) {
           return NextResponse.json(
@@ -148,6 +151,8 @@ export async function POST(request) {
         await match.ref.update({
           "audit_metadata.published_video_url": publishedVideoUrl,
           "audit_metadata.screenshot_filename": screenshotName || null,
+          "audit_metadata.verification_status": "PENDING_AUDIT",
+          "audit_metadata.revision_reason": null,
           submitted_at: nowIso,
         });
         return NextResponse.json(
@@ -161,7 +166,7 @@ export async function POST(request) {
           if (
             s.campaign_id === campaignId &&
             s.worker_id === workerId &&
-            s.audit_metadata?.verification_status === "PENDING_AUDIT"
+            ["PENDING_AUDIT", "revision_requested"].includes(s.audit_metadata?.verification_status)
           ) {
             foundId = id;
             existing = s;
@@ -179,6 +184,8 @@ export async function POST(request) {
           audit_metadata: {
             ...(existing.audit_metadata || {}),
             published_video_url: publishedVideoUrl,
+            verification_status: "PENDING_AUDIT",
+            revision_reason: null,
             ...(screenshotName ? { screenshot_filename: screenshotName } : {}),
           },
           submitted_at: nowIso,

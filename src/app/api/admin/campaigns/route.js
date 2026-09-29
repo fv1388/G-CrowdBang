@@ -228,7 +228,7 @@ export async function POST(request) {
         caption_text: campaign.caption_text,
         city: geo.enabled ? geo.target_city : "Anywhere",
         state: geo.enabled ? geo.target_state : "US",
-        payout: escrow.payout_rate ?? 3.0,
+        payout: escrow.payout_rate ?? 10.0,
         slotsRemaining: totalSlots,
         boundary: {
           enabled: !!geo.enabled,
