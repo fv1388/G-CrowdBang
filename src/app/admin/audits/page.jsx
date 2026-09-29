@@ -204,6 +204,12 @@ export default function AdminAuditsPage() {
                       )}
                     </div>
                   )}
+                  {a.contentBrief && (
+                    <div className="rounded-lg bg-slate-800/60 border border-slate-700 px-3 py-2 mt-1">
+                      <div className="text-cyan-300 font-semibold">🎬 商家视频拍摄要求（验收清单）</div>
+                      <div className="mt-1 whitespace-pre-wrap text-slate-300">{a.contentBrief}</div>
+                    </div>
+                  )}
                   <div>Worker：<span className="font-mono text-slate-300">{a.workerId}</span></div>
                   {a.latitude != null && (
                     <div>

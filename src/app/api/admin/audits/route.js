@@ -108,6 +108,7 @@ function buildRow(submissionId, s, camp) {
     targetAccount: camp.target_account || camp.targetAccount || null,
     videoUrl: camp.video_url || null,
     captionText: s.caption_text || camp.caption_text || null,
+    contentBrief: camp.content_brief || camp.contentBrief || null, // 商家自定义的视频拍摄要求（验收清单）
     // 寄样带货信息
     productName: camp.product?.name || camp.productName || null,
     productDescription: camp.product?.description || camp.productDescription || null,
