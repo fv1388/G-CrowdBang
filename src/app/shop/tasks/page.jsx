@@ -426,13 +426,19 @@ export default function TaskHallPage() {
         <div className="mt-6 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
           {campaigns.map((t) => {
             const src = isLocalEnv() ? LOCAL_ASSET_VIDEO : t.video_url;
+            const hasVideo = !!src;
             const c = completion[t.id] || {};
             const sf = sampleForm[t.id] || {};
             return (
               <div key={t.id} className="flex flex-col rounded-2xl border border-gray-200 bg-white p-4 shadow-lg">
-                {/* 素材视频：mock 阶段死锁本地静态资产桶 888.mp4 */}
-                <video controls preload="metadata" className="aspect-video w-full rounded-xl border border-gray-200 bg-black"
-                  src={src} />
+                {/* 素材视频：有有效地址才渲染；无素材时用紧凑占位，避免空黑块占大片空白 */}
+                {hasVideo ? (
+                  <video controls preload="metadata" className="aspect-video w-full rounded-xl border border-gray-200 bg-black" src={src} />
+                ) : (
+                  <div className="flex aspect-video w-full items-center justify-center rounded-xl border border-gray-200 bg-gray-100 text-sm text-gray-500">
+                    🎬 素材待商家上传 · No asset preview yet
+                  </div>
+                )}
 
                 <h3 className="mt-3 font-semibold text-gray-900">{t.title}</h3>
                 <span className="mt-2 inline-block rounded-full bg-blue-50 border border-blue-300 px-3 py-1 text-xs font-semibold text-blue-700">
