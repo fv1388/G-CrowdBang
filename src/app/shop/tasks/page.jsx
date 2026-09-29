@@ -346,11 +346,13 @@ export default function TaskHallPage() {
               <p className="text-3xl font-extrabold text-emerald-600">$5</p>
               <p className="mt-1 text-sm font-semibold text-gray-900">Video Upload Task</p>
               <p className="mt-1 text-xs leading-relaxed text-gray-600">We give the finished video, title &amp; tags. You just log in and post.</p>
+              <p className="mt-1 text-[11px] font-semibold text-slate-600">👥 Need 2000+ real followers · 需 2000+ 真实粉丝</p>
             </div>
             <div className="rounded-xl border border-gray-200 bg-emerald-50 p-4">
               <p className="text-3xl font-extrabold text-emerald-600">$10</p>
               <p className="mt-1 text-sm font-semibold text-gray-900">Sample Real-Shoot Task</p>
               <p className="mt-1 text-xs leading-relaxed text-gray-600">Free sample shipped to you. Film it on your own account.</p>
+              <p className="mt-1 text-[11px] font-semibold text-slate-600">👥 Need 5000+ real followers · 需 5000+ 真实粉丝</p>
             </div>
             <div className="rounded-xl border border-amber-300 bg-amber-50 p-4">
               <p className="text-sm font-bold text-amber-800">✅ Platform service fee is paid by the merchant — never deducted from your pay. You see it, you get it.</p>
@@ -479,6 +481,12 @@ export default function TaskHallPage() {
                 <h3 className="mt-3 font-semibold text-gray-900">{displayTitle}</h3>
                 <span className="mt-2 inline-block rounded-full bg-blue-50 border border-blue-300 px-3 py-1 text-xs font-semibold text-blue-700">
                   📱 {PLATFORM_LABEL[t.platform] || "TikTok"}
+                </span>
+                {/* 账号门槛：单发视频 2000+ 粉，制作视频 5000+ 粉 */}
+                <span className="mt-2 inline-block rounded-full bg-slate-100 border border-gray-300 px-3 py-1 text-xs font-semibold text-slate-600">
+                  {t.campaign_type === "video_post"
+                    ? "👥 2000+ followers required · 需 2000+ 粉丝"
+                    : "👥 5000+ followers required · 需 5000+ 粉丝"}
                 </span>
                 {/* 寄样带货专属信息 */}
                 {t.campaign_type !== "video_post" && (

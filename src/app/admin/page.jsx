@@ -37,7 +37,7 @@ export default function MerchantConsole() {
   const [videoFile, setVideoFile] = useState(null); // 选中的本地 mp4 文件对象
   const [caption, setCaption] = useState(""); // 引流带货文案（caption_text）
   const [totalSlots, setTotalSlots] = useState("");
-  const [payoutRate, setPayoutRate] = useState("10"); // 老外单条佣金（默认 $10）
+  const [payoutRate, setPayoutRate] = useState("5"); // 单发视频老外佣金（默认 $5）
   const [auditHours, setAuditHours] = useState("48"); // 人工核验超时自动放行窗口（小时），默认 48h
   // ---- 任务类型 + 寄样带货字段 ----
   const [campaignType, setCampaignType] = useState("video_post"); // video_post=视频代发 / product_sample=寄样带货
@@ -45,12 +45,26 @@ export default function MerchantConsole() {
   const [productDescription, setProductDescription] = useState(""); // 寄样：产品说明
   const [brandTag, setBrandTag] = useState(""); // 寄样：标题@的品牌账号
   const [commentLinkRequired, setCommentLinkRequired] = useState(true); // 寄样：评论区挂链接
-  const [platformFee, setPlatformFee] = useState("2"); // 平台单条服务费（默认 $2）
+  const [platformFee, setPlatformFee] = useState("1.5"); // 单发视频平台服务费（默认 $1.5）
   const [platform, setPlatform] = useState("tiktok"); // 目标发布平台（多平台 UGC）
   const [publishState, setPublishState] = useState("idle");
   const [publishMsg, setPublishMsg] = useState("");
   const [lastCampaignId, setLastCampaignId] = useState(null);
   const fileInputRef = useRef(null);
+
+  // 任务类型 → 自动套用默认定价（商家仍可手改）：
+  //   video_post 单发视频：达人 $5 + 平台 $1.5 = 商户出资 $6.5
+  //   product_sample / product_no_sample 创作视频：达人 $10 + 平台 $3 = 商户出资 $13
+  const applyTypePricing = (type) => {
+    setCampaignType(type);
+    if (type === "video_post") {
+      setPayoutRate("5");
+      setPlatformFee("1.5");
+    } else {
+      setPayoutRate("10");
+      setPlatformFee("3");
+    }
+  };
 
   // ---- 挂载时加载商户可用托管余额（GET /api/merchant/balance）----
   // 修复：充值后的余额存在 merchants/<merchantId>.balance_usd，页面初始加载需主动拉取，
@@ -322,7 +336,7 @@ export default function MerchantConsole() {
               <div className="mt-2 grid gap-3 sm:grid-cols-2">
                 <button
                   type="button"
-                  onClick={() => setCampaignType("video_post")}
+                  onClick={() => applyTypePricing("video_post")}
                   className={`rounded-xl border p-4 text-left transition-all ${
                     campaignType === "video_post"
                       ? "border-purple-500 bg-purple-100 shadow-[0_0_18px_rgba(168,85,247,0.2)]"
@@ -334,7 +348,7 @@ export default function MerchantConsole() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setCampaignType("product_sample")}
+                  onClick={() => applyTypePricing("product_sample")}
                   className={`rounded-xl border p-4 text-left transition-all ${
                     campaignType === "product_sample"
                       ? "border-emerald-500 bg-emerald-100 shadow-[0_0_18px_rgba(16,185,129,0.2)]"
@@ -346,7 +360,7 @@ export default function MerchantConsole() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setCampaignType("product_no_sample")}
+                  onClick={() => applyTypePricing("product_no_sample")}
                   className={`rounded-xl border p-4 text-left transition-all ${
                     campaignType === "product_no_sample"
                       ? "border-amber-400 bg-amber-50 shadow-[0_0_18px_rgba(245,158,11,0.2)]"
