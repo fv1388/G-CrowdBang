@@ -12,8 +12,8 @@ export default function Home() {
       {/* Hero */}
       <section className="mx-auto max-w-5xl px-6 pt-24 pb-16 text-center">
         <img
-          src="/crowdbang-logo.png"
-          alt="CrowdBang"
+          src="/crowdbang-logo-zh.png"
+          alt="CrowdBang · 众人帮"
           className="mx-auto mb-8 h-16 w-auto rounded-xl bg-white px-4 py-2 object-contain shadow-lg"
         />
         <h1 className="mx-auto max-w-3xl text-4xl font-bold tracking-tight sm:text-5xl">
