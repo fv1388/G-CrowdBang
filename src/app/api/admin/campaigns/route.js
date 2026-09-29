@@ -41,7 +41,7 @@ if (
 
 // 归属：优先取传入的商户 uid（前端鉴权会话），环境变量作服务端兜底示意。
 function currentMerchantId(override) {
-  return override || process.env.MERCHANT_ID ?? "mch_placeholder";
+  return override || (process.env.MERCHANT_ID ?? "mch_placeholder");
 }
 
 // ---- 本地 mock 任务（无 firebase-admin 时供商户看板演示）----

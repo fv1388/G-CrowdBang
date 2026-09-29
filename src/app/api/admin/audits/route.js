@@ -9,7 +9,7 @@
 // --------------------------------------------------------------------------
 
 import { NextResponse } from "next/server";
-import { mockSubmissions, mockCampaigns } from "../tasks/_mock-store";
+import { mockSubmissions, mockCampaigns } from "../../tasks/_mock-store";
 
 let db = null;
 let firebaseAvailable = false;
