@@ -11,10 +11,12 @@ export default function Home() {
     <main className="min-h-screen bg-slate-950 text-slate-100">
       {/* Hero */}
       <section className="mx-auto max-w-5xl px-6 pt-24 pb-16 text-center">
-        <p className="mx-auto inline-block rounded-full border border-indigo-400/30 bg-indigo-500/10 px-4 py-1 text-xs font-medium tracking-wide text-indigo-300">
-          G-CrowdBang · Cross-border crowdsourced content distribution
-        </p>
-        <h1 className="mx-auto mt-6 max-w-3xl text-4xl font-bold tracking-tight sm:text-5xl">
+        <img
+          src="/crowdbang-logo.png"
+          alt="CrowdBang"
+          className="mx-auto mb-8 h-16 w-auto rounded-xl bg-white px-4 py-2 object-contain shadow-lg"
+        />
+        <h1 className="mx-auto max-w-3xl text-4xl font-bold tracking-tight sm:text-5xl">
           Launch U.S. creator campaigns with verified, on-location results.
         </h1>
         <p className="mt-2 text-sm text-slate-500">
