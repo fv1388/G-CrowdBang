@@ -27,22 +27,6 @@ export default function Home() {
           用经过核验、真实落地的美国创作者，发起你的海外品牌增长任务。
         </p>
 
-        {/* 数据亮点条 */}
-        <div className="mx-auto mt-8 grid max-w-3xl grid-cols-3 gap-4">
-          <div className="rounded-2xl border border-slate-800 bg-slate-900 px-4 py-5">
-            <p className="text-3xl font-extrabold text-indigo-300">$12</p>
-            <p className="mt-1 text-xs text-slate-400">Per Verified Task · 每单成本</p>
-          </div>
-          <div className="rounded-2xl border border-slate-800 bg-slate-900 px-4 py-5">
-            <p className="text-3xl font-extrabold text-emerald-300">$10</p>
-            <p className="mt-1 text-xs text-slate-400">To Creator · 创作者到手</p>
-          </div>
-          <div className="rounded-2xl border border-slate-800 bg-slate-900 px-4 py-5">
-            <p className="text-3xl font-extrabold text-amber-300">$2</p>
-            <p className="mt-1 text-xs text-slate-400">Platform Fee · 平台服务费</p>
-          </div>
-        </div>
-
         <p className="mx-auto mt-8 max-w-3xl text-lg leading-relaxed text-slate-300">
           Distribute bounty tasks to verified U.S. creators, audit every submission with
           hardware-level GPS checks, and settle each payout through a transparent,
@@ -76,6 +60,42 @@ export default function Home() {
         >
           Sign in / 登录
         </Link>
+      </section>
+
+      {/* ============ 招募图文说明（海报）· 首屏最上方 ============ */}
+      <section className="mx-auto max-w-6xl px-6 pb-12">
+        <div className="rounded-3xl border border-slate-800 bg-slate-900 p-8 sm:p-10">
+          <div className="grid items-center gap-8 md:grid-cols-2">
+            <div>
+              <p className="text-xs uppercase tracking-widest text-emerald-400">Earn Real Cash</p>
+              <h2 className="mt-2 text-3xl font-bold sm:text-4xl">
+                $5–$10 per TikTok video
+              </h2>
+              <p className="mt-2 text-sm text-slate-400">
+                每发一条 TikTok 视频赚 $5–$10
+              </p>
+              <ul className="mt-6 space-y-3 text-sm text-slate-200">
+                <li>✅ <b>You get 100%</b> — platform service fee is paid by the merchant, never deducted from your pay · 服务费商家付，达人拿全额</li>
+                <li>✅ <b>90% paid immediately</b> after audit · 核验通过 90% 即时到账</li>
+                <li>✅ Last 10% releases automatically once the video stays public for 30 days · 视频保留 30 天自动释放</li>
+                <li>✅ Withdraw from $10 via PayPal · 满 $10 起 PayPal 提现</li>
+                <li>✅ Real tasks · Real pay · No experience needed · 真实任务、真实报酬、无需经验</li>
+              </ul>
+              <div className="mt-7 flex flex-wrap gap-4">
+                <Link href="/shop/tasks" className="rounded-xl bg-emerald-500 px-6 py-3 font-bold text-emerald-950 hover:bg-emerald-400">
+                  Join the Task Hall · 进入接单大厅
+                </Link>
+              </div>
+            </div>
+            <div className="mx-auto w-full max-w-sm">
+              <img
+                src="/crowdbang-recruit-poster.png"
+                alt="CrowdBang recruit poster · 招募海报"
+                className="w-full rounded-2xl border border-slate-700 shadow-2xl"
+              />
+            </div>
+          </div>
+        </div>
       </section>
 
       {/* ============ 为什么选择 CrowdBang ============ */}
@@ -164,7 +184,7 @@ export default function Home() {
               浏览开放悬赏、通过硬件 GPS 校验、用自己账号发布真实 UGC 内容、上传完工证明，并将已结算收益提现到 PayPal。
             </p>
             <ul className="mt-4 space-y-2 text-sm text-slate-300">
-              <li>✅ $10 per Verified Task · 每单核验赚 $10</li>
+              <li>✅ $5–$10 per Verified Task · 每单核验赚 $5–$10</li>
               <li>✅ Hardware GPS Check · 硬件位置核验</li>
               <li>✅ Multi-Platform: TikTok · YouTube · Instagram · Facebook · X</li>
               <li>✅ PayPal Withdrawal · PayPal 提现</li>
@@ -177,41 +197,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ============ 招募图文说明（海报） ============ */}
-      <section className="mx-auto max-w-6xl px-6 pb-12">
-        <div className="rounded-3xl border border-slate-800 bg-slate-900 p-8 sm:p-10">
-          <div className="grid items-center gap-8 md:grid-cols-2">
-            <div>
-              <p className="text-xs uppercase tracking-widest text-emerald-400">Earn Real Cash</p>
-              <h2 className="mt-2 text-3xl font-bold sm:text-4xl">
-                $5–$10 per TikTok video
-              </h2>
-              <p className="mt-2 text-sm text-slate-400">
-                每发一条 TikTok 视频赚 $5–$10
-              </p>
-              <ul className="mt-6 space-y-3 text-sm text-slate-200">
-                <li>✅ <b>You get 100%</b> — platform service fee is paid by the merchant, never deducted from your pay · 服务费商家付，达人拿全额</li>
-                <li>✅ <b>90% paid immediately</b> after audit · 核验通过 90% 即时到账</li>
-                <li>✅ Last 10% releases automatically once the video stays public for 30 days · 视频保留 30 天自动释放</li>
-                <li>✅ Withdraw from $10 via PayPal · 满 $10 起 PayPal 提现</li>
-                <li>✅ Real tasks · Real pay · No experience needed · 真实任务、真实报酬、无需经验</li>
-              </ul>
-              <div className="mt-7 flex flex-wrap gap-4">
-                <Link href="/shop/tasks" className="rounded-xl bg-emerald-500 px-6 py-3 font-bold text-emerald-950 hover:bg-emerald-400">
-                  Join the Task Hall · 进入接单大厅
-                </Link>
-              </div>
-            </div>
-            <div className="mx-auto w-full max-w-sm">
-              <img
-                src="/crowdbang-recruit-poster.png"
-                alt="CrowdBang recruit poster · 招募海报"
-                className="w-full rounded-2xl border border-slate-700 shadow-2xl"
-              />
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* ============ 招募图文说明（海报）· 已上移到首屏 Hero 之后 ============ */}
 
       {/* ============ 底部标语 ============ */}
       <footer className="border-t border-slate-800 py-8 text-center">
