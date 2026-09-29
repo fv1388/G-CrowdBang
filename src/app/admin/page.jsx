@@ -247,6 +247,7 @@ export default function MerchantConsole() {
       {/* 顶部导航 */}
       <nav className="border-b border-gray-200 bg-white/80 backdrop-blur">
         <div className="max-w-5xl mx-auto px-6 flex items-center gap-6 py-3">
+          <Link href="/" className="text-sm font-medium text-gray-500 hover:text-gray-800">← Home · 返回首页</Link>
           <span className="text-sm font-semibold text-purple-400 border-b-2 border-purple-400 pb-1">
             Merchant Console
           </span>
