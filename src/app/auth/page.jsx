@@ -180,7 +180,7 @@ export default function AuthPage() {
   ];
 
   return (
-    <main className="min-h-screen bg-gray-950 text-slate-100 flex items-center justify-center px-4 py-12">
+    <main className="min-h-screen bg-gray-50 text-gray-900 flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
         {/* 品牌徽标 */}
         <div className="text-center mb-8">
@@ -188,7 +188,7 @@ export default function AuthPage() {
           <h1 className="mt-2 text-2xl font-bold tracking-tight">
             {mode === "register" ? "Create Account" : "Sign In"}
           </h1>
-          <p className="mt-1 text-sm text-slate-400">
+          <p className="mt-1 text-sm text-gray-600">
             注册 / 登录 · G-CrowdBang unified portal
           </p>
         </div>
@@ -204,14 +204,14 @@ export default function AuthPage() {
                 onClick={() => setRole(card.key)}
                 className={`text-left rounded-xl border-2 p-4 transition-all duration-200 active:scale-[0.98] ${
                   active
-                    ? "border-purple-400 bg-purple-950/40 shadow-[0_0_18px_rgba(168,85,247,0.25)]"
-                    : "border-gray-700 bg-gray-900 hover:border-gray-500"
+                    ? "border-purple-400 bg-purple-50/40 shadow-[0_0_18px_rgba(168,85,247,0.25)]"
+                    : "border-gray-300 bg-white hover:border-gray-400"
                 }`}
               >
                 <div className="text-2xl">{card.emoji}</div>
                 <div className="mt-1 font-bold text-sm">{card.title}</div>
-                <div className="text-xs text-purple-300">{card.zh}</div>
-                <div className="mt-1 text-[11px] text-slate-400">{card.desc}</div>
+                <div className="text-xs text-purple-700">{card.zh}</div>
+                <div className="mt-1 text-[11px] text-gray-600">{card.desc}</div>
               </button>
             );
           })}
@@ -220,11 +220,11 @@ export default function AuthPage() {
         {/* 2) 邮箱密码表单（实时校验 + loading / error） */}
         <form
           onSubmit={handleEmailSubmit}
-          className="bg-gray-900 rounded-2xl border border-gray-800 p-5 space-y-4"
+          className="bg-white rounded-2xl border border-gray-200 p-5 space-y-4"
         >
           {/* 邮箱 */}
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1.5">
+            <label className="block text-xs font-medium text-gray-600 mb-1.5">
               Email / 邮箱
             </label>
             <input
@@ -236,7 +236,7 @@ export default function AuthPage() {
                 setInfoNote("");
               }}
               placeholder="email@example.com"
-              className="w-full rounded-xl bg-slate-200 text-slate-900 px-4 py-3 text-sm outline-none ring-1 ring-transparent transition-all focus:ring-purple-400 focus:bg-white placeholder:text-slate-500"
+              className="w-full rounded-xl bg-white text-gray-900 px-4 py-3 text-sm outline-none ring-1 ring-transparent transition-all focus:ring-purple-400 focus:bg-white placeholder:text-gray-500"
             />
             {email && !emailValid && (
               <p className="mt-1 text-xs text-rose-400">Invalid email format / 邮箱格式无效。</p>
@@ -245,7 +245,7 @@ export default function AuthPage() {
 
           {/* 密码 */}
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1.5">
+            <label className="block text-xs font-medium text-gray-600 mb-1.5">
               Password / 密码
             </label>
             <input
@@ -257,7 +257,7 @@ export default function AuthPage() {
                 setInfoNote("");
               }}
               placeholder="••••••••"
-              className="w-full rounded-xl bg-slate-200 text-slate-900 px-4 py-3 text-sm outline-none ring-1 ring-transparent transition-all focus:ring-purple-400 focus:bg-white placeholder:text-slate-500"
+              className="w-full rounded-xl bg-white text-gray-900 px-4 py-3 text-sm outline-none ring-1 ring-transparent transition-all focus:ring-purple-400 focus:bg-white placeholder:text-gray-500"
             />
             {password && !passwordValid && (
               <p className="mt-1 text-xs text-rose-400">
@@ -268,13 +268,13 @@ export default function AuthPage() {
 
           {/* 实时/服务端错误反馈 */}
           {(fieldError || serverError) && (
-            <div className="rounded-xl border border-rose-800 bg-rose-950/40 px-4 py-3 text-xs text-rose-300">
+            <div className="rounded-xl border border-rose-300 bg-rose-50/40 px-4 py-3 text-xs text-rose-700">
               {fieldError || serverError}
             </div>
           )}
           {/* 友好提示（如邮箱已占用 → 已切登录） */}
           {infoNote && (
-            <div className="rounded-xl border border-amber-800 bg-amber-950/40 px-4 py-3 text-xs text-amber-300">
+            <div className="rounded-xl border border-amber-800 bg-amber-950/40 px-4 py-3 text-xs text-amber-700">
               💡 {infoNote}
             </div>
           )}
@@ -290,11 +290,11 @@ export default function AuthPage() {
               }}
               className="mt-0.5 h-4 w-4 rounded accent-purple-500"
             />
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-gray-600">
               I agree to the{" "}
-              <span className="text-purple-300 underline">Terms of Service</span> and{" "}
-              <span className="text-purple-300 underline">Privacy Policy</span>
-              <span className="block text-slate-500">
+              <span className="text-purple-700 underline">Terms of Service</span> and{" "}
+              <span className="text-purple-700 underline">Privacy Policy</span>
+              <span className="block text-gray-500">
                 我已阅读并同意服务条款与隐私政策（未勾选无法提交）
               </span>
             </span>
@@ -325,7 +325,7 @@ export default function AuthPage() {
 
         {/* 4) 一键谷歌登录按钮（同样受法律勾选锁保护） */}
         <div className="mt-4">
-          <div className="flex items-center gap-3 text-[11px] text-slate-500 mb-3">
+          <div className="flex items-center gap-3 text-[11px] text-gray-500 mb-3">
             <span className="flex-1 h-px bg-gray-800" />
             or · 或
             <span className="flex-1 h-px bg-gray-800" />
@@ -349,13 +349,13 @@ export default function AuthPage() {
             </svg>
             <span className="text-sm tracking-wide">Continue with Google</span>
           </button>
-          <p className="mt-1 text-center text-[11px] text-slate-500">
+          <p className="mt-1 text-center text-[11px] text-gray-500">
             Continue with Google / 用谷歌一键登录
           </p>
         </div>
 
         {/* 模式切换：登录 ⇄ 注册 */}
-        <div className="mt-5 text-center text-sm text-slate-400">
+        <div className="mt-5 text-center text-sm text-gray-600">
           {mode === "register" ? (
             <>
               Already have an account?{" "}
@@ -367,7 +367,7 @@ export default function AuthPage() {
                   setFieldError("");
                   setInfoNote("");
                 }}
-                className="text-purple-300 underline font-medium"
+                className="text-purple-700 underline font-medium"
               >
                 Sign In · 登录
               </button>
@@ -383,7 +383,7 @@ export default function AuthPage() {
                   setFieldError("");
                   setInfoNote("");
                 }}
-                className="text-purple-300 underline font-medium"
+                className="text-purple-700 underline font-medium"
               >
                 Create Account · 注册
               </button>
@@ -393,10 +393,10 @@ export default function AuthPage() {
 
         {/* 返回首页 + 经典登录页互通 */}
         <div className="mt-4 text-center space-y-2">
-          <a href="/login" className="block text-xs font-medium text-indigo-400 hover:text-indigo-300">
+          <a href="/login" className="block text-xs font-medium text-indigo-400 hover:text-indigo-700">
             Classic: quick login portal / 经典快捷登录页 →
           </a>
-          <a href="/" className="block text-xs text-slate-500 hover:text-slate-300">
+          <a href="/" className="block text-xs text-gray-500 hover:text-gray-700">
             ← Back to landing / 返回首页
           </a>
         </div>

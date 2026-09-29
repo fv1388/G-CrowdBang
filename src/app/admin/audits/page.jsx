@@ -89,7 +89,7 @@ export default function AdminAuditsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center text-slate-300">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center text-gray-700">
         ⏳ Loading merchant audit console...
       </div>
     );
@@ -97,10 +97,10 @@ export default function AdminAuditsPage() {
 
   if (denied) {
     return (
-      <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center text-center px-6">
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center text-center px-6">
         <div className="text-7xl font-black text-slate-700 mb-4">403</div>
-        <h1 className="text-xl font-bold text-slate-200 mb-2">Access Denied · 商户专属权限越界</h1>
-        <p className="text-slate-400 mb-6">此核验面板仅限商户（MERCHANT）身份访问。</p>
+        <h1 className="text-xl font-bold text-gray-800 mb-2">Access Denied · 商户专属权限越界</h1>
+        <p className="text-gray-600 mb-6">此核验面板仅限商户（MERCHANT）身份访问。</p>
         <Link
           href="/admin"
           className="rounded-xl bg-purple-600 hover:bg-purple-500 px-5 py-2 text-white font-semibold transition"
@@ -112,13 +112,13 @@ export default function AdminAuditsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-950 text-slate-100 p-6">
+    <main className="min-h-screen bg-gray-50 text-gray-900 p-6">
       <div className="max-w-4xl mx-auto">
         {/* 顶部栏 */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div>
             <h1 className="text-2xl font-bold">Audit Console · 人工核验面板</h1>
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-gray-600">
               肉眼核验老外回填的完工链接是否已发布到目标账号，再一键放行 / 拒付。
             </p>
           </div>
@@ -126,7 +126,7 @@ export default function AdminAuditsPage() {
             <button
               onClick={load}
               disabled={fetching}
-              className="rounded-xl bg-slate-800 hover:bg-slate-700 border border-gray-700 px-4 py-2 text-sm font-semibold transition disabled:opacity-50"
+              className="rounded-xl bg-gray-50 hover:bg-gray-100 border border-gray-300 px-4 py-2 text-sm font-semibold transition disabled:opacity-50"
             >
               {fetching ? "⏳ 刷新中..." : "↻ 刷新"}
             </button>
@@ -153,13 +153,13 @@ export default function AdminAuditsPage() {
 
         {/* 待核验列表 */}
         {fetching ? (
-          <div className="rounded-xl bg-slate-900 border border-gray-800 p-10 text-center text-slate-400">
+          <div className="rounded-xl bg-white border border-gray-200 p-10 text-center text-gray-600">
             ⏳ Loading pending audits...
           </div>
         ) : audits.length === 0 ? (
-          <div className="rounded-xl bg-slate-900 border border-gray-800 p-10 text-center">
-            <p className="text-slate-300 font-semibold">暂无待核验对账</p>
-            <p className="text-slate-500 text-sm mt-1">
+          <div className="rounded-xl bg-white border border-gray-200 p-10 text-center">
+            <p className="text-gray-700 font-semibold">暂无待核验对账</p>
+            <p className="text-gray-500 text-sm mt-1">
               老外提交完工链接后，会出现在这里等你核验。
             </p>
           </div>
@@ -168,7 +168,7 @@ export default function AdminAuditsPage() {
             {audits.map((a) => (
               <div
                 key={a.submissionId}
-                className="rounded-2xl bg-slate-900 border border-gray-700 p-5 shadow-lg"
+                className="rounded-2xl bg-white border border-gray-300 p-5 shadow-lg"
               >
                 {/* 头部：目标账号 + 倒计时 */}
                 <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
@@ -176,29 +176,29 @@ export default function AdminAuditsPage() {
                     <span className="px-2 py-0.5 rounded-md bg-blue-900/50 border border-blue-700 text-blue-200 text-xs font-bold">
                       Target Account
                     </span>
-                    <span className="font-mono text-sm text-blue-300">{a.targetAccount || "—"}</span>
+                    <span className="font-mono text-sm text-blue-700">{a.targetAccount || "—"}</span>
                   </div>
                   <div className="text-right">
                     {a.remainingHours !== null ? (
                       a.remainingHours > 0 ? (
-                        <span className="text-xs text-amber-300">
+                        <span className="text-xs text-amber-700">
                           ⏱ {a.remainingHours}h 后自动放行 · 窗口内可拒付
                         </span>
                       ) : (
-                        <span className="text-xs text-emerald-300">✓ 已超窗口，等待系统自动放行</span>
+                        <span className="text-xs text-emerald-700">✓ 已超窗口，等待系统自动放行</span>
                       )
                     ) : (
-                      <span className="text-xs text-slate-500">待提交完工链接</span>
+                      <span className="text-xs text-gray-500">待提交完工链接</span>
                     )}
                   </div>
                 </div>
 
                 {/* 任务信息 */}
-                <div className="text-xs text-slate-400 space-y-1 mb-3">
+                <div className="text-xs text-gray-600 space-y-1 mb-3">
                   <div>任务：{a.campaignTitle || a.campaignId}</div>
                   {a.campaignType !== "video_post" && (
-                    <div className="rounded-lg bg-emerald-950/30 border border-emerald-800/40 px-3 py-2 mt-1 space-y-0.5">
-                      <div className="text-emerald-300 font-semibold">{a.campaignType === "product_sample" ? "📦 寄样带货任务" : "🎬 无样带货任务"}</div>
+                    <div className="rounded-lg bg-emerald-50 border border-emerald-300 px-3 py-2 mt-1 space-y-0.5">
+                      <div className="text-emerald-700 font-semibold">{a.campaignType === "product_sample" ? "📦 寄样带货任务" : "🎬 无样带货任务"}</div>
                       <div>平台：{PLATFORM_LABEL[a.platform] || a.platform || "TikTok"}</div>
                       {a.productName && <div>产品：{a.productName}</div>}
                       {a.brandTag && <div>标题@：{a.brandTag}</div>}
@@ -209,12 +209,12 @@ export default function AdminAuditsPage() {
                     </div>
                   )}
                   {a.contentBrief && (
-                    <div className="rounded-lg bg-slate-800/60 border border-slate-700 px-3 py-2 mt-1">
-                      <div className="text-cyan-300 font-semibold">🎬 商家视频拍摄要求（验收清单）</div>
-                      <div className="mt-1 whitespace-pre-wrap text-slate-300">{a.contentBrief}</div>
+                    <div className="rounded-lg bg-gray-100 border border-gray-300 px-3 py-2 mt-1">
+                      <div className="text-cyan-700 font-semibold">🎬 商家视频拍摄要求（验收清单）</div>
+                      <div className="mt-1 whitespace-pre-wrap text-gray-700">{a.contentBrief}</div>
                     </div>
                   )}
-                  <div>Worker：<span className="font-mono text-slate-300">{a.workerId}</span></div>
+                  <div>Worker：<span className="font-mono text-gray-700">{a.workerId}</span></div>
                   {a.latitude != null && (
                     <div>
                       GPS：{a.latitude.toFixed(4)}, {a.longitude.toFixed(4)}
@@ -223,22 +223,22 @@ export default function AdminAuditsPage() {
                 </div>
 
                 {/* 完工证明：链接 + 截图 */}
-                <div className="rounded-xl bg-slate-800/60 border border-gray-800 p-3 mb-3 space-y-2">
-                  <div className="text-xs text-slate-500 uppercase tracking-wide">完工证明 · Proof of work</div>
+                <div className="rounded-xl bg-gray-100 border border-gray-200 p-3 mb-3 space-y-2">
+                  <div className="text-xs text-gray-500 uppercase tracking-wide">完工证明 · Proof of work</div>
                   {a.publishedVideoUrl ? (
                     <a
                       href={a.publishedVideoUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="block text-sm text-cyan-300 hover:underline break-all"
+                      className="block text-sm text-cyan-700 hover:underline break-all"
                     >
                       🔗 {a.publishedVideoUrl}
                     </a>
                   ) : (
-                    <div className="text-sm text-slate-500">⚠ 老外尚未回填发布链接</div>
+                    <div className="text-sm text-gray-500">⚠ 老外尚未回填发布链接</div>
                   )}
                   {a.screenshotFilename ? (
-                    <div className="text-xs text-slate-400">📸 截图：{a.screenshotFilename}</div>
+                    <div className="text-xs text-gray-600">📸 截图：{a.screenshotFilename}</div>
                   ) : null}
                 </div>
 

@@ -254,7 +254,7 @@ export default function MerchantConsole() {
   // 挂载中
   if (loading) {
     return (
-      <main className="min-h-screen bg-gray-950 grid place-items-center text-slate-500">
+      <main className="min-h-screen bg-gray-50 grid place-items-center text-gray-500">
         Checking merchant session...
       </main>
     );
@@ -263,16 +263,16 @@ export default function MerchantConsole() {
   // 403 权限卡点：角色非 merchant（或未登录）→ 物理拦截
   if (!isMerchant) {
     return (
-      <main className="min-h-screen bg-gray-950 grid place-items-center p-6 text-slate-100">
-        <div className="w-full max-w-md rounded-2xl border border-rose-800 bg-gray-900 p-8 text-center shadow-[0_0_30px_rgba(244,63,94,0.15)]">
+      <main className="min-h-screen bg-gray-50 grid place-items-center p-6 text-gray-900">
+        <div className="w-full max-w-md rounded-2xl border border-rose-300 bg-white p-8 text-center shadow-[0_0_30px_rgba(244,63,94,0.15)]">
           <p className="text-6xl">🚫</p>
           <h1 className="mt-4 text-2xl font-bold text-rose-500">403 · Forbidden</h1>
           <p className="text-sm text-rose-400">403 · 禁止访问</p>
-          <p className="mt-2 text-sm text-slate-400">
+          <p className="mt-2 text-sm text-gray-600">
             This is the Merchant Console. Your session role is{" "}
             <strong>{session?.role ?? "none"}</strong> — merchant access is required.
           </p>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-gray-500">
             这里是商家控制台。当前会话角色为 <strong>{session?.role ?? "无"}</strong>，需要商家身份才能访问。
           </p>
           <p className="mt-1 text-xs text-slate-600">
@@ -286,38 +286,38 @@ export default function MerchantConsole() {
 
   // 已通过鉴权的商户控制台仪表盘（暗黑微光科技感）
   return (
-    <main className="min-h-screen bg-gray-950 text-slate-100">
+    <main className="min-h-screen bg-gray-50 text-gray-900">
       {/* 顶部导航 */}
-      <nav className="border-b border-gray-800 bg-gray-900/70 backdrop-blur">
+      <nav className="border-b border-gray-200 bg-white/80 backdrop-blur">
         <div className="max-w-5xl mx-auto px-6 flex items-center gap-6 py-3">
           <span className="text-sm font-semibold text-purple-400 border-b-2 border-purple-400 pb-1">
             Merchant Console
           </span>
-          <Link href="/admin/campaigns" className="text-sm font-medium text-slate-400 hover:text-slate-200">My Campaigns</Link>
-          <Link href="/admin/audits" className="text-sm font-medium text-amber-300 hover:text-amber-200">Audit Console</Link>
-          <Link href="/shop/tasks" className="text-sm font-medium text-slate-400 hover:text-slate-200">Task Hall</Link>
-          <span className="ml-auto text-xs text-slate-500">UID: {merchantId}</span>
+          <Link href="/admin/campaigns" className="text-sm font-medium text-gray-600 hover:text-gray-800">My Campaigns</Link>
+          <Link href="/admin/audits" className="text-sm font-medium text-amber-700 hover:text-amber-200">Audit Console</Link>
+          <Link href="/shop/tasks" className="text-sm font-medium text-gray-600 hover:text-gray-800">Task Hall</Link>
+          <span className="ml-auto text-xs text-gray-500">UID: {merchantId}</span>
         </div>
       </nav>
 
       <div className="max-w-5xl mx-auto px-6 py-12">
         <h1 className="text-3xl font-bold tracking-tight">Merchant Console</h1>
-        <p className="text-sm text-slate-500">商家控制台</p>
-        <p className="mt-2 text-slate-400">Top up your USD escrow wallet, then publish bounty campaigns.</p>
-        <p className="text-sm text-slate-500">先充值你的美元托管钱包，再发布悬赏任务。</p>
+        <p className="text-sm text-gray-500">商家控制台</p>
+        <p className="mt-2 text-gray-600">Top up your USD escrow wallet, then publish bounty campaigns.</p>
+        <p className="text-sm text-gray-500">先充值你的美元托管钱包，再发布悬赏任务。</p>
 
         {/* 钱包充值卡 */}
-        <div className="mt-8 rounded-2xl border border-gray-800 bg-gray-900 p-6 shadow-sm">
-          <h2 className="font-semibold text-slate-200">USD Wallet (PayPal)</h2>
-          <p className="text-xs text-slate-500">美元钱包（PayPal）</p>
-          <p className="mt-1 text-sm text-slate-400">
+        <div className="mt-8 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <h2 className="font-semibold text-gray-800">USD Wallet (PayPal)</h2>
+          <p className="text-xs text-gray-500">美元钱包（PayPal）</p>
+          <p className="mt-1 text-sm text-gray-600">
             Available escrow balance: <strong className="text-emerald-400">${Number(balance).toFixed(2)}</strong>
           </p>
-          <p className="text-xs text-slate-500">可用托管余额：${Number(balance).toFixed(2)}</p>
+          <p className="text-xs text-gray-500">可用托管余额：${Number(balance).toFixed(2)}</p>
           <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
             <div className="flex-1">
-              <label className="block text-sm text-slate-300">Deposit amount (USD)</label>
-              <p className="text-xs text-slate-500">充值金额（美元）</p>
+              <label className="block text-sm text-gray-700">Deposit amount (USD)</label>
+              <p className="text-xs text-gray-500">充值金额（美元）</p>
               <input
                 type="number"
                 min="1"
@@ -325,7 +325,7 @@ export default function MerchantConsole() {
                 value={topUpAmount}
                 onChange={(e) => setTopUpAmount(e.target.value)}
                 placeholder="e.g. 100.00"
-                className="mt-1 w-full rounded-xl bg-slate-800 border border-gray-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="mt-1 w-full rounded-xl bg-gray-50 border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             </div>
             <button
@@ -335,23 +335,23 @@ export default function MerchantConsole() {
             >
               {topUpState === "submitting" ? "Verifying PayPal..." : "Top Up via PayPal"}
             </button>
-            <p className="text-xs text-slate-500">通过 PayPal 充值</p>
+            <p className="text-xs text-gray-500">通过 PayPal 充值</p>
           </div>
           {topUpState === "success" && (
-            <p className="mt-3 rounded-xl bg-emerald-950 border border-emerald-800 p-3 text-sm text-emerald-400">
+            <p className="mt-3 rounded-xl bg-emerald-50 border border-emerald-800 p-3 text-sm text-emerald-400">
               ✅ {topUpMsg} Balance ${Number(balance).toFixed(2)}.
             </p>
           )}
           {topUpState === "error" && (
-            <p className="mt-3 rounded-xl bg-rose-950 border border-rose-800 p-3 text-sm text-rose-400">{topUpMsg}</p>
+            <p className="mt-3 rounded-xl bg-rose-50 border border-rose-300 p-3 text-sm text-rose-400">{topUpMsg}</p>
           )}
         </div>
 
         {/* 订阅收费卡（方案 B：平台固定月订阅） */}
-        <div className="mt-6 rounded-2xl border border-gray-800 bg-gray-900 p-6 shadow-sm">
-          <h2 className="font-semibold text-slate-200">Subscription Plans</h2>
-          <p className="text-xs text-slate-500">订阅套餐（平台固定月费收入之一）</p>
-          <p className="mt-1 text-sm text-slate-400">
+        <div className="mt-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <h2 className="font-semibold text-gray-800">Subscription Plans</h2>
+          <p className="text-xs text-gray-500">订阅套餐（平台固定月费收入之一）</p>
+          <p className="mt-1 text-sm text-gray-600">
             {activePlan
               ? <>Active plan: <strong className="text-emerald-400">{activePlan}</strong>. 当前生效套餐。</>
               : "Pick a plan to activate recurring access and priority distribution."}
@@ -360,97 +360,97 @@ export default function MerchantConsole() {
             <button
               onClick={() => activatePlan("starter")}
               disabled={planState === "submitting"}
-              className="rounded-xl border border-gray-700 bg-slate-800 p-4 text-left hover:border-purple-500 disabled:opacity-50 transition-all"
+              className="rounded-xl border border-gray-300 bg-gray-50 p-4 text-left hover:border-purple-500 disabled:opacity-50 transition-all"
             >
-              <p className="font-semibold text-slate-100">Starter</p>
-              <p className="text-xs text-slate-500">免费 · 10 tasks/月</p>
-              <p className="mt-2 text-sm font-bold text-slate-200">$0</p>
+              <p className="font-semibold text-gray-900">Starter</p>
+              <p className="text-xs text-gray-500">免费 · 10 tasks/月</p>
+              <p className="mt-2 text-sm font-bold text-gray-800">$0</p>
             </button>
             <button
               onClick={() => activatePlan("pro")}
               disabled={planState === "submitting"}
               className="rounded-xl border border-purple-600 bg-purple-900/20 p-4 text-left hover:bg-purple-900/40 disabled:opacity-50 transition-all"
             >
-              <p className="font-semibold text-purple-300">Pro</p>
-              <p className="text-xs text-slate-400">无限任务 · 优先分发</p>
-              <p className="mt-2 text-sm font-bold text-purple-300">$99 / 月</p>
+              <p className="font-semibold text-purple-700">Pro</p>
+              <p className="text-xs text-gray-600">无限任务 · 优先分发</p>
+              <p className="mt-2 text-sm font-bold text-purple-700">$99 / 月</p>
             </button>
             <button
               onClick={() => activatePlan("enterprise")}
               disabled={planState === "submitting"}
-              className="rounded-xl border border-gray-700 bg-slate-800 p-4 text-left hover:border-purple-500 disabled:opacity-50 transition-all"
+              className="rounded-xl border border-gray-300 bg-gray-50 p-4 text-left hover:border-purple-500 disabled:opacity-50 transition-all"
             >
-              <p className="font-semibold text-slate-100">Enterprise</p>
-              <p className="text-xs text-slate-500">专属客服 · 自定义核验窗口</p>
-              <p className="mt-2 text-sm font-bold text-slate-200">$299 / 月</p>
+              <p className="font-semibold text-gray-900">Enterprise</p>
+              <p className="text-xs text-gray-500">专属客服 · 自定义核验窗口</p>
+              <p className="mt-2 text-sm font-bold text-gray-800">$299 / 月</p>
             </button>
           </div>
           {planState === "success" && (
-            <p className="mt-3 rounded-xl bg-emerald-950 border border-emerald-800 p-3 text-sm text-emerald-400">{planMsg}</p>
+            <p className="mt-3 rounded-xl bg-emerald-50 border border-emerald-800 p-3 text-sm text-emerald-400">{planMsg}</p>
           )}
           {planState === "error" && (
-            <p className="mt-3 rounded-xl bg-rose-950 border border-rose-800 p-3 text-sm text-rose-400">{planMsg}</p>
+            <p className="mt-3 rounded-xl bg-rose-50 border border-rose-300 p-3 text-sm text-rose-400">{planMsg}</p>
           )}
         </div>
 
         {/* 发布悬赏表单（本地视频上传） */}
-        <div className="mt-6 rounded-2xl border border-gray-800 bg-gray-900 p-6 shadow-sm">
-          <h2 className="font-semibold text-slate-200">Publish &amp; Deposit Escrow</h2>
-          <p className="text-xs text-slate-500">发布悬赏并托管资金</p>
-          <p className="mt-1 text-sm text-slate-400">
+        <div className="mt-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <h2 className="font-semibold text-gray-800">Publish &amp; Deposit Escrow</h2>
+          <p className="text-xs text-gray-500">发布悬赏并托管资金</p>
+          <p className="mt-1 text-sm text-gray-600">
             Funds (slots × (payout + platform fee)) are held in escrow until work is verified.
           </p>
-          <p className="text-xs text-slate-500">资金（名额 ×（佣金 + 平台服务费））在作品核验前托管冻结。</p>
+          <p className="text-xs text-gray-500">资金（名额 ×（佣金 + 平台服务费））在作品核验前托管冻结。</p>
 
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             {/* 0) 任务类型切换：视频代发 / 寄样带货 */}
             <div className="sm:col-span-2">
-              <label className="block text-sm text-slate-300">Campaign Type</label>
-              <p className="text-xs text-slate-500">任务类型（决定老外怎么完成任务）</p>
+              <label className="block text-sm text-gray-700">Campaign Type</label>
+              <p className="text-xs text-gray-500">任务类型（决定老外怎么完成任务）</p>
               <div className="mt-2 grid gap-3 sm:grid-cols-2">
                 <button
                   type="button"
                   onClick={() => setCampaignType("video_post")}
                   className={`rounded-xl border p-4 text-left transition-all ${
                     campaignType === "video_post"
-                      ? "border-purple-500 bg-purple-900/30 shadow-[0_0_18px_rgba(168,85,247,0.2)]"
-                      : "border-gray-700 bg-slate-800"
+                      ? "border-purple-500 bg-purple-100 shadow-[0_0_18px_rgba(168,85,247,0.2)]"
+                      : "border-gray-300 bg-gray-50"
                   }`}
                 >
-                  <p className="font-semibold text-slate-100">🎥 视频代发</p>
-                  <p className="mt-1 text-xs text-slate-400">商家提供视频素材，老外用自己账号发布 + 品牌话题</p>
+                  <p className="font-semibold text-gray-900">🎥 视频代发</p>
+                  <p className="mt-1 text-xs text-gray-600">商家提供视频素材，老外用自己账号发布 + 品牌话题</p>
                 </button>
                 <button
                   type="button"
                   onClick={() => setCampaignType("product_sample")}
                   className={`rounded-xl border p-4 text-left transition-all ${
                     campaignType === "product_sample"
-                      ? "border-emerald-500 bg-emerald-900/30 shadow-[0_0_18px_rgba(16,185,129,0.2)]"
-                      : "border-gray-700 bg-slate-800"
+                      ? "border-emerald-500 bg-emerald-100 shadow-[0_0_18px_rgba(16,185,129,0.2)]"
+                      : "border-gray-300 bg-gray-50"
                   }`}
                 >
-                  <p className="font-semibold text-slate-100">📦 寄样带货（免费样品 + 佣金）</p>
-                  <p className="mt-1 text-xs text-slate-400">商家邮寄产品，老外真实使用拍摄 + 评论挂链接 + 标题@品牌号</p>
+                  <p className="font-semibold text-gray-900">📦 寄样带货（免费样品 + 佣金）</p>
+                  <p className="mt-1 text-xs text-gray-600">商家邮寄产品，老外真实使用拍摄 + 评论挂链接 + 标题@品牌号</p>
                 </button>
                 <button
                   type="button"
                   onClick={() => setCampaignType("product_no_sample")}
                   className={`rounded-xl border p-4 text-left transition-all ${
                     campaignType === "product_no_sample"
-                      ? "border-amber-500 bg-amber-900/30 shadow-[0_0_18px_rgba(245,158,11,0.2)]"
-                      : "border-gray-700 bg-slate-800"
+                      ? "border-amber-400 bg-amber-50 shadow-[0_0_18px_rgba(245,158,11,0.2)]"
+                      : "border-gray-300 bg-gray-50"
                   }`}
                 >
-                  <p className="font-semibold text-slate-100">🎬 无样带货（不寄样品 + 佣金）</p>
-                  <p className="mt-1 text-xs text-slate-400">商家不寄样，老外自购/自备产品真实拍摄 + 挂链接 + 标题@品牌号，省样品+物流成本</p>
+                  <p className="font-semibold text-gray-900">🎬 无样带货（不寄样品 + 佣金）</p>
+                  <p className="mt-1 text-xs text-gray-600">商家不寄样，老外自购/自备产品真实拍摄 + 挂链接 + 标题@品牌号，省样品+物流成本</p>
                 </button>
               </div>
             </div>
 
             {/* 平台单条服务费（平台收入核心；商家发单时托管冻结，核验放行后归平台） */}
             <div className="sm:col-span-2">
-              <label className="block text-sm text-slate-300">Platform Fee ($/task)</label>
-              <p className="text-xs text-slate-500">平台单条服务费（美元/任务，托管冻结，核验放行后归平台）</p>
+              <label className="block text-sm text-gray-700">Platform Fee ($/task)</label>
+              <p className="text-xs text-gray-500">平台单条服务费（美元/任务，托管冻结，核验放行后归平台）</p>
               <input
                 type="number"
                 min="0"
@@ -458,17 +458,17 @@ export default function MerchantConsole() {
                 value={platformFee}
                 onChange={(e) => setPlatformFee(e.target.value)}
                 placeholder="e.g. 4.00"
-                className="mt-1 w-full rounded-xl bg-slate-800 border border-gray-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="mt-1 w-full rounded-xl bg-gray-50 border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             </div>
             {/* 目标发布平台（多平台 UGC：老外将发布到该平台的自己账号） */}
             <div className="sm:col-span-2">
-              <label className="block text-sm text-slate-300">Publish Platform</label>
-              <p className="text-xs text-slate-500">目标发布平台（老外发布到该平台自己账号 + 品牌话题 + 挂链）</p>
+              <label className="block text-sm text-gray-700">Publish Platform</label>
+              <p className="text-xs text-gray-500">目标发布平台（老外发布到该平台自己账号 + 品牌话题 + 挂链）</p>
               <select
                 value={platform}
                 onChange={(e) => setPlatform(e.target.value)}
-                className="mt-1 w-full rounded-xl bg-slate-800 border border-gray-700 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="mt-1 w-full rounded-xl bg-gray-50 border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
               >
                 <option value="tiktok">TikTok</option>
                 <option value="youtube">YouTube Shorts</option>
@@ -482,50 +482,50 @@ export default function MerchantConsole() {
             {campaignType !== "video_post" && (
               <>
                 <div className="sm:col-span-2">
-                  <p className="rounded-lg bg-slate-800/60 border border-gray-700 px-3 py-2 text-xs text-slate-400">
+                  <p className="rounded-lg bg-gray-100 border border-gray-300 px-3 py-2 text-xs text-gray-600">
                     {campaignType === "product_sample" ? "📦 寄样模式：商家邮寄产品，老外申请免费样品（填美国收货地址）收样后拍摄。" : "🎬 无样模式：商家不寄样，老外自购/自备产品后拍摄（省样品+物流成本）。"}
                   </p>
                 </div>
                 <div className="sm:col-span-2">
-                  <label className="block text-sm text-slate-300">Product Name</label>
-                  <p className="text-xs text-slate-500">寄样产品名（美国老外将收到的样品）</p>
+                  <label className="block text-sm text-gray-700">Product Name</label>
+                  <p className="text-xs text-gray-500">寄样产品名（美国老外将收到的样品）</p>
                   <input
                     type="text"
                     value={productName}
                     onChange={(e) => setProductName(e.target.value)}
                     placeholder="e.g. Smart LED Ring Light"
-                    className="mt-1 w-full rounded-xl bg-slate-800 border border-gray-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="mt-1 w-full rounded-xl bg-gray-50 border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
                 <div className="sm:col-span-2">
-                  <label className="block text-sm text-slate-300">Product Description / 样品说明</label>
-                  <p className="text-xs text-slate-500">{campaignType === "product_sample" ? "告诉老外寄什么样品、怎么拍（英文）" : "告诉老外产品卖点、怎么自购并拍摄（英文）"}</p>
+                  <label className="block text-sm text-gray-700">Product Description / 样品说明</label>
+                  <p className="text-xs text-gray-500">{campaignType === "product_sample" ? "告诉老外寄什么样品、怎么拍（英文）" : "告诉老外产品卖点、怎么自购并拍摄（英文）"}</p>
                   <textarea
                     value={productDescription}
                     onChange={(e) => setProductDescription(e.target.value)}
                     placeholder="Free sample — you keep it. Film an honest unboxing/review on your own account."
                     rows={2}
-                    className="mt-1 w-full rounded-xl bg-slate-800 border border-gray-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="mt-1 w-full rounded-xl bg-gray-50 border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
                 <div className="sm:col-span-2">
-                  <label className="block text-sm text-slate-300">Brand Tag (@ 标题账号)</label>
-                  <p className="text-xs text-slate-500">要求老外在视频标题@的品牌账号（如 @fv138888）</p>
+                  <label className="block text-sm text-gray-700">Brand Tag (@ 标题账号)</label>
+                  <p className="text-xs text-gray-500">要求老外在视频标题@的品牌账号（如 @fv138888）</p>
                   <input
                     type="text"
                     value={brandTag}
                     onChange={(e) => setBrandTag(e.target.value)}
                     placeholder="例如: @fv138888"
-                    className="mt-1 w-full rounded-xl bg-slate-800 border border-gray-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="mt-1 w-full rounded-xl bg-gray-50 border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
                 <div className="sm:col-span-2">
-                  <label className="flex items-start gap-2 text-sm text-slate-300">
+                  <label className="flex items-start gap-2 text-sm text-gray-700">
                     <input
                       type="checkbox"
                       checked={commentLinkRequired}
                       onChange={(e) => setCommentLinkRequired(e.target.checked)}
-                      className="mt-0.5 h-4 w-4 rounded border-gray-600 bg-slate-800 text-emerald-500 focus:ring-emerald-500"
+                      className="mt-0.5 h-4 w-4 rounded border-gray-600 bg-gray-50 text-emerald-500 focus:ring-emerald-500"
                     />
                     <span>Require product link in comments（要求老外在评论区挂商品链接）</span>
                   </label>
@@ -535,49 +535,49 @@ export default function MerchantConsole() {
 
             {/* 1) 品牌话题 + 内容要求 + 目标账号（UGC 模式：前两者为核心，目标账号可选） */}
             <div className="sm:col-span-2">
-              <label className="block text-sm text-slate-300">Brand Hashtag</label>
-              <p className="text-xs text-slate-500">品牌话题（老外在自己账号创作时带上，统一流量打点，如 #HomeTech）</p>
+              <label className="block text-sm text-gray-700">Brand Hashtag</label>
+              <p className="text-xs text-gray-500">品牌话题（老外在自己账号创作时带上，统一流量打点，如 #HomeTech）</p>
               <input
                 type="text"
                 value={brandHashtag}
                 onChange={(e) => setBrandHashtag(e.target.value)}
                 placeholder="例如: #HomeTech"
-                className="mt-1 w-full rounded-xl bg-slate-800 border border-gray-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="mt-1 w-full rounded-xl bg-gray-50 border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             </div>
             <div className="sm:col-span-2">
-              <label className="block text-sm text-slate-300">Content Brief</label>
-              <p className="text-xs text-slate-500">内容要求 / 创作指引（告诉老外拍什么、怎么拍，让内容真实自然，英文）</p>
+              <label className="block text-sm text-gray-700">Content Brief</label>
+              <p className="text-xs text-gray-500">内容要求 / 创作指引（告诉老外拍什么、怎么拍，让内容真实自然，英文）</p>
               <textarea
                 value={contentBrief}
                 onChange={(e) => setContentBrief(e.target.value)}
                 placeholder="e.g. Film a real unboxing of this gadget on your own account, show it in your daily setup, and add #HomeTech. Keep it honest and natural."
                 rows={3}
-                className="mt-1 w-full rounded-xl bg-slate-800 border border-gray-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="mt-1 w-full rounded-xl bg-gray-50 border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             </div>
             <div className="sm:col-span-2">
-              <label className="block text-sm text-slate-300">Target TikTok Account（可选）</label>
-              <p className="text-xs text-slate-500">可选：目标发布账号（如 @fv138888）。不填时老外直接发布到自己的账号即可。</p>
+              <label className="block text-sm text-gray-700">Target TikTok Account（可选）</label>
+              <p className="text-xs text-gray-500">可选：目标发布账号（如 @fv138888）。不填时老外直接发布到自己的账号即可。</p>
               <input
                 type="text"
                 value={targetAccount}
                 onChange={(e) => setTargetAccount(e.target.value)}
                 placeholder="可选: @fv138888"
-                className="mt-1 w-full rounded-xl bg-slate-800 border border-gray-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="mt-1 w-full rounded-xl bg-gray-50 border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             </div>
 
             {/* 2) 本地视频上传控件 */}
             <div className="sm:col-span-2">
-              <label className="block text-sm text-slate-300">Local Video Asset</label>
-              <p className="text-xs text-slate-500">本地视频素材（点击选择桌面 888.mp4）</p>
+              <label className="block text-sm text-gray-700">Local Video Asset</label>
+              <p className="text-xs text-gray-500">本地视频素材（点击选择桌面 888.mp4）</p>
               <input
                 ref={fileInputRef}
                 type="file"
                 accept="video/mp4"
                 onChange={(e) => setVideoFile(e.target.files?.[0] || null)}
-                className="mt-1 w-full rounded-xl bg-slate-800 border border-gray-700 px-3 py-2 text-sm text-slate-200 file:mr-3 file:rounded-lg file:border-0 file:bg-purple-600 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-purple-500"
+                className="mt-1 w-full rounded-xl bg-gray-50 border border-gray-300 px-3 py-2 text-sm text-gray-800 file:mr-3 file:rounded-lg file:border-0 file:bg-purple-600 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-purple-500"
               />
               <p className="mt-1 text-xs text-emerald-500">
                 Selected: {selectedVideoName} → {`/assets/${selectedVideoName}`}
@@ -586,33 +586,33 @@ export default function MerchantConsole() {
 
             {/* 3) 任务文案大输入框 */}
             <div className="sm:col-span-2">
-              <label className="block text-sm text-slate-300">Caption (English)</label>
-              <p className="text-xs text-slate-500">美式引流带货文案与标签（英文）</p>
+              <label className="block text-sm text-gray-700">Caption (English)</label>
+              <p className="text-xs text-gray-500">美式引流带货文案与标签（英文）</p>
               <textarea
                 value={caption}
                 onChange={(e) => setCaption(e.target.value)}
                 placeholder="Check out this budget-friendly gadget — link in bio! #tech #gadgets"
                 rows={3}
-                className="mt-1 w-full rounded-xl bg-slate-800 border border-gray-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="mt-1 w-full rounded-xl bg-gray-50 border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             </div>
 
             {/* 托管资金参数（后端强校验必需） */}
             <div>
-              <label className="block text-sm text-slate-300">Total slots</label>
-              <p className="text-xs text-slate-500">总招募名额</p>
+              <label className="block text-sm text-gray-700">Total slots</label>
+              <p className="text-xs text-gray-500">总招募名额</p>
               <input
                 type="number"
                 min="1"
                 value={totalSlots}
                 onChange={(e) => setTotalSlots(e.target.value)}
                 placeholder="e.g. 50"
-                className="mt-1 w-full rounded-xl bg-slate-800 border border-gray-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="mt-1 w-full rounded-xl bg-gray-50 border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             </div>
             <div>
-              <label className="block text-sm text-slate-300">Payout rate ($/task)</label>
-              <p className="text-xs text-slate-500">单次佣金（美元/任务）</p>
+              <label className="block text-sm text-gray-700">Payout rate ($/task)</label>
+              <p className="text-xs text-gray-500">单次佣金（美元/任务）</p>
               <input
                 type="number"
                 min="0"
@@ -620,23 +620,23 @@ export default function MerchantConsole() {
                 value={payoutRate}
                 onChange={(e) => setPayoutRate(e.target.value)}
                 placeholder="e.g. 3.00"
-                className="mt-1 w-full rounded-xl bg-slate-800 border border-gray-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="mt-1 w-full rounded-xl bg-gray-50 border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             </div>
 
             {/* 人工核验超时自动放行窗口（小时）：商家不点核验时，到期系统自动放行分账 */}
             <div className="sm:col-span-2">
-              <label className="block text-sm text-slate-300">Auto-approve window (hours)</label>
-              <p className="text-xs text-slate-500">核验超时自动放行窗口（小时）——商家不点核验，到期系统自动结算</p>
+              <label className="block text-sm text-gray-700">Auto-approve window (hours)</label>
+              <p className="text-xs text-gray-500">核验超时自动放行窗口（小时）——商家不点核验，到期系统自动结算</p>
               <input
                 type="number"
                 min="1"
                 value={auditHours}
                 onChange={(e) => setAuditHours(e.target.value)}
                 placeholder="e.g. 48"
-                className="mt-1 w-full rounded-xl bg-slate-800 border border-gray-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="mt-1 w-full rounded-xl bg-gray-50 border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 text-xs text-gray-500">
                 老外提交完工链接后，此窗口内你可手动拒付；超时未操作 → 系统自动放行分账（按任务设定的佣金与服务费）。
               </p>
             </div>
@@ -663,13 +663,13 @@ export default function MerchantConsole() {
           <p className="mt-1 text-xs text-purple-400">发布并托管资金（提交后老外端刷新 /shop/tasks 立即可见）</p>
 
           {publishState === "success" && (
-            <p className="mt-3 rounded-xl bg-emerald-950 border border-emerald-800 p-3 text-sm text-emerald-400">
+            <p className="mt-3 rounded-xl bg-emerald-50 border border-emerald-800 p-3 text-sm text-emerald-400">
               ✅ {publishMsg}
               {lastCampaignId ? ` ID: ${lastCampaignId}` : ""}
             </p>
           )}
           {publishState === "error" && (
-            <p className="mt-3 rounded-xl bg-rose-950 border border-rose-800 p-3 text-sm text-rose-400">{publishMsg}</p>
+            <p className="mt-3 rounded-xl bg-rose-50 border border-rose-300 p-3 text-sm text-rose-400">{publishMsg}</p>
           )}
         </div>
       </div>
