@@ -424,7 +424,7 @@ export default function TaskHallPage() {
           <p className="mt-4 text-gray-500">No open bounties right now — check back soon.</p>
         )}
 
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
           {campaigns.map((t) => {
             // 防御①：数据损坏 / 已清空名额的任务优雅隐藏，防止长条形断层空白
             if (!t?.id) return null;
@@ -482,6 +482,11 @@ export default function TaskHallPage() {
                   </div>
                 )}
                 <p className="mt-1 text-sm leading-relaxed text-gray-600">{displayCaption}</p>
+                {t.campaign_type === "video_post" && (
+                  <div className="mt-2 rounded-lg bg-cyan-50 border border-cyan-200 px-3 py-2 text-xs leading-relaxed text-cyan-800">
+                    <span className="font-semibold">Create guidance:</span> Film a real 30-60s video of the product on your own account, include the brand hashtag from the task, then paste your public link below to get paid.
+                  </div>
+                )}
                 {t.content_brief && (
                   <p className="mt-2 rounded-lg bg-gray-100 border border-gray-300 px-3 py-2 text-xs leading-relaxed text-gray-700">
                     <span className="font-semibold text-cyan-700">Content brief:</span> {t.content_brief}
@@ -541,7 +546,7 @@ export default function TaskHallPage() {
                 </div>
 
                 {/* 完工证明对账单上传表单（Form Gateway） */}
-                <div className="mt-4 rounded-xl border border-gray-300 bg-gray-50 p-3">
+                <div className="mt-auto pt-4 rounded-xl border border-gray-300 bg-gray-50 p-3">
                   <p className="text-xs font-semibold text-gray-700">Proof of completion / 完工证明对账单</p>
                   <p className="mt-1 text-[11px] leading-relaxed text-gray-500">
                     Posted on your own account? Paste the public link and attach a timestamped TikTok success screenshot, then submit for audit.
