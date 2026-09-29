@@ -60,7 +60,7 @@ function validateEscrow(escrow) {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { title, video_url, caption_text, target_hashtags, geotargeting_config, escrow_summary, merchantId, target_account, target_tiktok_account, audit_strategy, audit_auto_approve_hours, brand_hashtag, content_brief, campaign_type, product_name, product_description, brand_tag, comment_link_required, platform_fee } = body || {};
+    const { title, video_url, caption_text, target_hashtags, geotargeting_config, escrow_summary, merchantId, target_account, target_tiktok_account, audit_strategy, audit_auto_approve_hours, brand_hashtag, content_brief, campaign_type, product_name, product_description, brand_tag, comment_link_required, platform_fee, platform } = body || {};
 
     // 人工核验超时自动放行窗口（小时）：商户可设，未设则默认 48h
     const autoApproveHours = Number(audit_strategy?.auto_approve_after_hours ?? audit_auto_approve_hours);
@@ -85,7 +85,8 @@ export async function POST(request) {
       campaign_id: null,
       owner_merchant_id: ownerId,
       title,
-      campaign_type: campaign_type || "video_post", // video_post=视频代发 / product_sample=寄样带货
+      campaign_type: campaign_type || "video_post", // video_post=视频代发 / product_sample=寄样带货 / product_no_sample=无样带货
+      platform: (["tiktok","youtube","instagram","facebook","x"].includes(platform) ? platform : "tiktok"), // 目标发布平台（多平台 UGC）
       video_url: video_url ?? "",
       caption_text: caption_text ?? "",
       target_account: target_tiktok_account || target_account || "", // 目标发布号（可选；UGC 模式不再作为核心必填）

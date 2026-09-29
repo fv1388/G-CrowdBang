@@ -104,7 +104,8 @@ function buildRow(submissionId, s, camp) {
     submissionId,
     campaignId: s.campaign_id,
     campaignTitle: camp.title || camp.caption_text || null,
-    campaignType: camp.campaign_type || camp.campaignType || null, // video_post | product_sample
+    campaignType: camp.campaign_type || camp.campaignType || null, // video_post | product_sample | product_no_sample
+    platform: camp.platform || camp.platform || "tiktok", // 目标发布平台（多平台 UGC）
     targetAccount: camp.target_account || camp.targetAccount || null,
     videoUrl: camp.video_url || null,
     captionText: s.caption_text || camp.caption_text || null,

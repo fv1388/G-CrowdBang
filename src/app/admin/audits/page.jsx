@@ -13,6 +13,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuthSession } from "@/database/auth";
 
+// 目标发布平台显示标签（多平台 UGC）
+const PLATFORM_LABEL = { tiktok: "TikTok", youtube: "YouTube Shorts", instagram: "Instagram Reels", facebook: "Facebook Reels", x: "X (Twitter)" };
+
 export default function AdminAuditsPage() {
   const { session, loading } = useAuthSession();
 
@@ -193,9 +196,10 @@ export default function AdminAuditsPage() {
                 {/* 任务信息 */}
                 <div className="text-xs text-slate-400 space-y-1 mb-3">
                   <div>任务：{a.campaignTitle || a.campaignId}</div>
-                  {a.campaignType === "product_sample" && (
+                  {a.campaignType !== "video_post" && (
                     <div className="rounded-lg bg-emerald-950/30 border border-emerald-800/40 px-3 py-2 mt-1 space-y-0.5">
-                      <div className="text-emerald-300 font-semibold">📦 寄样带货任务</div>
+                      <div className="text-emerald-300 font-semibold">{a.campaignType === "product_sample" ? "📦 寄样带货任务" : "🎬 无样带货任务"}</div>
+                      <div>平台：{PLATFORM_LABEL[a.platform] || a.platform || "TikTok"}</div>
                       {a.productName && <div>产品：{a.productName}</div>}
                       {a.brandTag && <div>标题@：{a.brandTag}</div>}
                       {a.commentLinkRequired && <div>要求：评论区挂商品链接</div>}

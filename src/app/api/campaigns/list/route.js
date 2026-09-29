@@ -146,6 +146,7 @@ export async function GET() {
         id: doc.id,
         title: d.title || "Untitled Campaign",
         campaign_type: d.campaign_type || "video_post",
+        platform: (["tiktok","youtube","instagram","facebook","x"].includes(d.platform) ? d.platform : "tiktok"), // 目标发布平台
         video_url: d.video_url || "",
         caption_text: d.caption_text || "",
         brand_hashtag: d.brand_hashtag || "", // 品牌话题（UGC 创作导向）

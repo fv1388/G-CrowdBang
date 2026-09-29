@@ -20,6 +20,15 @@ import DemoLoginCard from "@/app/components/DemoLoginCard";
 // 本地静态素材资产桶（mock 阶段）
 const LOCAL_ASSET_VIDEO = "http://localhost:3000/assets/888.mp4";
 
+// 目标发布平台显示标签（多平台 UGC）
+const PLATFORM_LABEL = {
+  tiktok: "TikTok",
+  youtube: "YouTube Shorts",
+  instagram: "Instagram Reels",
+  facebook: "Facebook Reels",
+  x: "X (Twitter)",
+};
+
 // 是否处于本地 mock（hostname 判定；线上回退真实任务视频）
 function isLocalEnv() {
   if (typeof window === "undefined") return false;
@@ -405,11 +414,16 @@ export default function TaskHallPage() {
                   src={src} />
 
                 <h3 className="mt-3 font-semibold text-slate-100">{t.title}</h3>
+                <span className="mt-2 inline-block rounded-full bg-blue-900/30 border border-blue-600/40 px-3 py-1 text-xs font-semibold text-blue-300">
+                  📱 {PLATFORM_LABEL[t.platform] || "TikTok"}
+                </span>
                 {/* 寄样带货专属信息 */}
-                {t.campaign_type === "product_sample" && (
+                {t.campaign_type !== "video_post" && (
                   <div className="mt-2 space-y-1.5">
                     <span className="inline-block rounded-full bg-emerald-500/15 border border-emerald-600/40 px-3 py-1 text-xs font-bold text-emerald-300">
-                      📦 Free Sample + ${Number(t.payout ?? 12).toFixed(2)} Payout
+                      {t.campaign_type === "product_sample"
+                        ? `📦 Free Sample + $${Number(t.payout ?? 12).toFixed(2)} Payout`
+                        : `🎬 No Sample — $${Number(t.payout ?? 12).toFixed(2)} Payout (buy/have product)`}
                     </span>
                     {t.product_name && (
                       <p className="text-xs text-emerald-300">

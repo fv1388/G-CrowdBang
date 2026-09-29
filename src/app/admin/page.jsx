@@ -47,6 +47,7 @@ export default function MerchantConsole() {
   const [brandTag, setBrandTag] = useState(""); // 寄样：标题@的品牌账号
   const [commentLinkRequired, setCommentLinkRequired] = useState(true); // 寄样：评论区挂链接
   const [platformFee, setPlatformFee] = useState("4"); // 平台单条服务费（默认 $4）
+  const [platform, setPlatform] = useState("tiktok"); // 目标发布平台（多平台 UGC）
   const [publishState, setPublishState] = useState("idle");
   const [publishMsg, setPublishMsg] = useState("");
   const [lastCampaignId, setLastCampaignId] = useState(null);
@@ -203,7 +204,8 @@ export default function MerchantConsole() {
         body: JSON.stringify({
           merchantId, // 商户真实 UID（鉴权会话）
           title,
-          campaign_type: campaignType, // 任务类型：video_post / product_sample
+          campaign_type: campaignType, // 任务类型：video_post / product_sample / product_no_sample
+          platform, // 目标发布平台（tiktok/youtube/instagram/facebook/x）
           video_url: videoUrl,
           caption_text: captionText,
           target_account: targetAccount, // 可选目标发布号（UGC 模式非核心锚点）
@@ -430,6 +432,18 @@ export default function MerchantConsole() {
                   <p className="font-semibold text-slate-100">📦 寄样带货（免费样品 + 佣金）</p>
                   <p className="mt-1 text-xs text-slate-400">商家邮寄产品，老外真实使用拍摄 + 评论挂链接 + 标题@品牌号</p>
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setCampaignType("product_no_sample")}
+                  className={`rounded-xl border p-4 text-left transition-all ${
+                    campaignType === "product_no_sample"
+                      ? "border-amber-500 bg-amber-900/30 shadow-[0_0_18px_rgba(245,158,11,0.2)]"
+                      : "border-gray-700 bg-slate-800"
+                  }`}
+                >
+                  <p className="font-semibold text-slate-100">🎬 无样带货（不寄样品 + 佣金）</p>
+                  <p className="mt-1 text-xs text-slate-400">商家不寄样，老外自购/自备产品真实拍摄 + 挂链接 + 标题@品牌号，省样品+物流成本</p>
+                </button>
               </div>
             </div>
 
@@ -447,10 +461,31 @@ export default function MerchantConsole() {
                 className="mt-1 w-full rounded-xl bg-slate-800 border border-gray-700 px-3 py-2 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             </div>
+            {/* 目标发布平台（多平台 UGC：老外将发布到该平台的自己账号） */}
+            <div className="sm:col-span-2">
+              <label className="block text-sm text-slate-300">Publish Platform</label>
+              <p className="text-xs text-slate-500">目标发布平台（老外发布到该平台自己账号 + 品牌话题 + 挂链）</p>
+              <select
+                value={platform}
+                onChange={(e) => setPlatform(e.target.value)}
+                className="mt-1 w-full rounded-xl bg-slate-800 border border-gray-700 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="tiktok">TikTok</option>
+                <option value="youtube">YouTube Shorts</option>
+                <option value="instagram">Instagram Reels</option>
+                <option value="facebook">Facebook Reels</option>
+                <option value="x">X (Twitter)</option>
+              </select>
+            </div>
 
-            {/* 寄样带货专属字段（仅 campaign_type=product_sample 显示） */}
-            {campaignType === "product_sample" && (
+            {/* 带货专属字段（寄样 product_sample / 无样 product_no_sample 显示） */}
+            {campaignType !== "video_post" && (
               <>
+                <div className="sm:col-span-2">
+                  <p className="rounded-lg bg-slate-800/60 border border-gray-700 px-3 py-2 text-xs text-slate-400">
+                    {campaignType === "product_sample" ? "📦 寄样模式：商家邮寄产品，老外申请免费样品（填美国收货地址）收样后拍摄。" : "🎬 无样模式：商家不寄样，老外自购/自备产品后拍摄（省样品+物流成本）。"}
+                  </p>
+                </div>
                 <div className="sm:col-span-2">
                   <label className="block text-sm text-slate-300">Product Name</label>
                   <p className="text-xs text-slate-500">寄样产品名（美国老外将收到的样品）</p>
@@ -464,7 +499,7 @@ export default function MerchantConsole() {
                 </div>
                 <div className="sm:col-span-2">
                   <label className="block text-sm text-slate-300">Product Description / 样品说明</label>
-                  <p className="text-xs text-slate-500">告诉老外寄什么样品、怎么拍（英文）</p>
+                  <p className="text-xs text-slate-500">{campaignType === "product_sample" ? "告诉老外寄什么样品、怎么拍（英文）" : "告诉老外产品卖点、怎么自购并拍摄（英文）"}</p>
                   <textarea
                     value={productDescription}
                     onChange={(e) => setProductDescription(e.target.value)}
