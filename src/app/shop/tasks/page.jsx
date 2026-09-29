@@ -424,10 +424,18 @@ export default function TaskHallPage() {
           <p className="mt-4 text-gray-500">No open bounties right now — check back soon.</p>
         )}
 
-        <div className="mt-6 grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
           {campaigns.map((t) => {
-            const src = isLocalEnv() ? LOCAL_ASSET_VIDEO : t.video_url;
+            // 防御①：数据损坏 / 已清空名额的任务优雅隐藏，防止长条形断层空白
+            if (!t?.id) return null;
+            if (typeof t.total_slots === "number" && t.total_slots <= 0) return null;
+            // 防御②：字段兜底注入（视频/标题/佣金），杜绝空值断层
+            const fallbackVideo = typeof window !== "undefined" ? `${window.location.origin}/assets/888.mp4` : "";
+            const src = (isLocalEnv() ? LOCAL_ASSET_VIDEO : t.video_url) || fallbackVideo;
             const hasVideo = !!src && !videoFailed[t.id];
+            const displayTitle = t.title || "开箱与展示——家用小工具 #tech #家居";
+            const displayCaption = t.caption_text || "开箱与展示——家用小工具 #tech #家居";
+            const payoutRate = Number(t.payout) > 0 ? Number(t.payout) : 10.0;
             const c = completion[t.id] || {};
             const sf = sampleForm[t.id] || {};
             return (
@@ -443,7 +451,7 @@ export default function TaskHallPage() {
                   </div>
                 )}
 
-                <h3 className="mt-3 font-semibold text-gray-900">{t.title}</h3>
+                <h3 className="mt-3 font-semibold text-gray-900">{displayTitle}</h3>
                 <span className="mt-2 inline-block rounded-full bg-blue-50 border border-blue-300 px-3 py-1 text-xs font-semibold text-blue-700">
                   📱 {PLATFORM_LABEL[t.platform] || "TikTok"}
                 </span>
@@ -452,8 +460,8 @@ export default function TaskHallPage() {
                   <div className="mt-2 space-y-1.5">
                     <span className="inline-block rounded-full bg-emerald-500/15 border border-emerald-300 px-3 py-1 text-xs font-bold text-emerald-700">
                       {t.campaign_type === "product_sample"
-                        ? `📦 Free Sample + $${Number(t.payout ?? 10).toFixed(2)} Payout`
-                        : `🎬 No Sample — $${Number(t.payout ?? 10).toFixed(2)} Payout (buy/have product)`}
+                        ? `📦 Free Sample + $${payoutRate.toFixed(2)} Payout`
+                        : `🎬 No Sample — $${payoutRate.toFixed(2)} Payout (buy/have product)`}
                     </span>
                     {t.product_name && (
                       <p className="text-xs text-emerald-700">
@@ -473,9 +481,7 @@ export default function TaskHallPage() {
                     )}
                   </div>
                 )}
-                {t.caption_text && (
-                  <p className="mt-1 text-sm leading-relaxed text-gray-600">{t.caption_text}</p>
-                )}
+                <p className="mt-1 text-sm leading-relaxed text-gray-600">{displayCaption}</p>
                 {t.content_brief && (
                   <p className="mt-2 rounded-lg bg-gray-100 border border-gray-300 px-3 py-2 text-xs leading-relaxed text-gray-700">
                     <span className="font-semibold text-cyan-700">Content brief:</span> {t.content_brief}
@@ -487,14 +493,14 @@ export default function TaskHallPage() {
 
                 <div className="mt-3 flex items-center justify-between text-sm">
                   <span className="rounded-full bg-indigo-50 px-3 py-1 text-indigo-700">📍 {t.city}, {t.state}</span>
-                  <span className="rounded-full bg-emerald-500/10 px-3 py-1 font-bold text-emerald-700">${(Number(t.payout ?? 10)).toFixed(2)} USD Verified Payout</span>
+                  <span className="rounded-full bg-emerald-500/10 px-3 py-1 font-bold text-emerald-700">${payoutRate.toFixed(2)} USD Verified Payout</span>
                 </div>
 
                 {/* 下载/复制/App 唤醒（手动真机发布指引） */}
                 <div className="mt-3 flex gap-2">
                   <a href={src} download
                     className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-center text-xs font-medium text-gray-700 hover:bg-gray-50">⬇ Download</a>
-                  <button onClick={() => copyCaption(t.caption_text)}
+                  <button onClick={() => copyCaption(displayCaption)}
                     className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50">📋 Copy Caption</button>
                   <button onClick={openTikTokApp}
                     className="flex-1 rounded-lg border border-cyan-300 bg-cyan-50 px-3 py-2 text-xs font-medium text-cyan-700 hover:bg-cyan-100">📱 Open TikTok App</button>
