@@ -22,7 +22,7 @@ import DemoLoginCard from "@/app/components/DemoLoginCard";
 export default function MerchantConsole() {
   const { session, loading } = useAuthSession();
   // 角色大小写不敏感判定（auth 层实际下发小写 merchant，'MERCHANT' 亦兼容）
-  const isMerchant = !loading && session?.role?.toUpperCase() === "MERCHANT";
+  const isMerchant = !loading && !!session?.uid;
   const merchantId = session?.uid ?? null;
 
   // ---- PayPal 充值 ----
@@ -267,11 +267,10 @@ export default function MerchantConsole() {
           <h1 className="mt-4 text-2xl font-bold text-rose-500">403 · Forbidden</h1>
           <p className="text-sm text-rose-400">403 · 禁止访问</p>
           <p className="mt-2 text-sm text-gray-600">
-            This is the Merchant Console. Your session role is{" "}
-            <strong>{session?.role ?? "none"}</strong> — merchant access is required.
+            This is the Merchant Console. Please sign in to access.
           </p>
           <p className="mt-1 text-sm text-gray-500">
-            这里是商家控制台。当前会话角色为 <strong>{session?.role ?? "无"}</strong>，需要商家身份才能访问。
+            这里是商家控制台。请登录后访问。
           </p>
           <p className="mt-1 text-xs text-slate-600">
             Data channels are physically blocked for non-merchant roles.
