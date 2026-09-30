@@ -232,25 +232,14 @@ export default function MerchantConsole() {
     );
   }
 
-  // 403 权限卡点：角色非 merchant（或未登录）→ 物理拦截
+  // 未登录 → 自动跳转到统一登录页 /auth
   if (!isMerchant) {
+    if (typeof window !== "undefined") {
+      window.location.href = "/auth?next=/admin";
+    }
     return (
       <main className="min-h-screen bg-gray-50 grid place-items-center p-6 text-gray-900">
-        <div className="w-full max-w-md rounded-2xl border border-rose-300 bg-white p-8 text-center shadow-[0_0_30px_rgba(244,63,94,0.15)]">
-          <p className="text-6xl">🚫</p>
-          <h1 className="mt-4 text-2xl font-bold text-rose-500">403 · Forbidden</h1>
-          <p className="text-sm text-rose-400">403 · 禁止访问</p>
-          <p className="mt-2 text-sm text-gray-600">
-            This is the Merchant Console. Please sign in to access.
-          </p>
-          <p className="mt-1 text-sm text-gray-500">
-            这里是商家控制台。请登录后访问。
-          </p>
-          <p className="mt-1 text-xs text-slate-600">
-            Data channels are physically blocked for non-merchant roles.
-          </p>
-          <DemoLoginCard role="merchant" backHref="/" />
-        </div>
+        <p className="text-sm text-gray-500">Redirecting to sign in…</p>
       </main>
     );
   }
