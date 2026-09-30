@@ -37,7 +37,7 @@ export default function MerchantConsole() {
   const [videoFile, setVideoFile] = useState(null); // 选中的本地 mp4 文件对象
   const [caption, setCaption] = useState(""); // 引流带货文案（caption_text）
   const [totalSlots, setTotalSlots] = useState("");
-  const [payoutRate, setPayoutRate] = useState("6.5"); // 单发视频老外佣金（已锁死）（默认 $5）
+  const [payoutRate, setPayoutRate] = useState("5"); // 单发视频老外佣金（已锁死）（默认 $5）
   const [auditHours, setAuditHours] = useState("48"); // 人工核验超时自动放行窗口（小时），默认 48h
   // ---- 任务类型 + 寄样带货字段 ----
   const [campaignType, setCampaignType] = useState("video_post"); // video_post=视频代发 / product_sample=寄样带货
@@ -59,13 +59,13 @@ export default function MerchantConsole() {
     setCampaignType(type);
     // 价格锁死：按任务类型固定，商户不可改
     if (type === "video_post") {
-      setPayoutRate("6.5");
+      setPayoutRate("5");
       setPlatformFee("1.5");
     } else if (type === "product_sample") {
-      setPayoutRate("13");
+      setPayoutRate("10");
       setPlatformFee("3");
     } else {
-      setPayoutRate("10");
+      setPayoutRate("8");
       setPlatformFee("2");
     }
   };
