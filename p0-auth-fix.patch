@@ -1,0 +1,619 @@
+From 6ba2fcf1eee558701a981aee1ead6d376f4383e6 Mon Sep 17 00:00:00 2001
+From: security-fix <dev@g-crowdbang.local>
+Date: Wed, 30 Sep 2026 05:46:36 +0800
+Subject: [PATCH] =?UTF-8?q?fix:=20P0=20=E6=9D=83=E9=99=90=E6=BC=8F?=
+ =?UTF-8?q?=E6=B4=9E=E4=BF=AE=E5=A4=8D=20-=20=E6=9C=AA=E7=99=BB=E5=BD=95?=
+ =?UTF-8?q?=E6=8B=A6=E6=88=AA=E5=90=8E=E5=8F=B0+API=E9=89=B4=E6=9D=83+?=
+ =?UTF-8?q?=E8=A7=92=E8=89=B2=E9=9A=94=E7=A6=BB+IDOR=E4=BF=AE=E5=A4=8D?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ middleware.ts                               | 70 +++++++++++++++
+ src/app/api/admin/audits/route.js           |  8 +-
+ src/app/api/admin/campaigns/route.js        | 21 ++++-
+ src/app/api/admin/submissions/route.js      |  7 +-
+ src/app/api/auth/login/route.js             | 24 ++++-
+ src/app/api/auth/logout/route.js            | 13 +++
+ src/app/api/campaigns/create/route.js       |  9 +-
+ src/app/api/campaigns/list/route.js         |  7 +-
+ src/app/api/merchant/balance/route.js       | 11 ++-
+ src/app/api/payouts/request/route.js        |  7 +-
+ src/app/api/tasks/publish-video/route.js    | 10 ++-
+ src/app/api/workers/gps-check/route.js      | 99 +++++++++++++++++++++
+ src/app/api/workers/my-submissions/route.js |  6 +-
+ src/database/auth-server.js                 | 31 +++++++
+ 14 files changed, 299 insertions(+), 24 deletions(-)
+ create mode 100644 middleware.ts
+ create mode 100644 src/app/api/auth/logout/route.js
+ create mode 100644 src/app/api/workers/gps-check/route.js
+
+diff --git a/middleware.ts b/middleware.ts
+new file mode 100644
+index 0000000..0f5f1ea
+--- /dev/null
++++ b/middleware.ts
+@@ -0,0 +1,70 @@
++// middleware.ts (Next.js 根目录中间件)
++// ==========================================================================
++// G-CrowdBang · P0 权限修复
++// 职责：
++//   1. 保留原 src/proxy.ts 的路径重写：/tasks/* -> /shop/tasks/*
++//   2. 登录态守卫：未带 gb_session cookie 访问 /admin/* 或 /shop/tasks/*
++//      一律 307 重定向到 /auth?next=<原路径>，杜绝游客直接渲染后台页面。
++//   3. /api/* 请求不做 307（API 用 401 JSON 响应），真实鉴权在各路由用 requireAuth。
++// 注意：middleware 跑在 Edge Runtime，不能用 firebase-admin；这里只做 cookie 粗筛，
++//       真正的 token 校验（verifyIdToken）在 API Route 里做。
++// ==========================================================================
++
++import { NextRequest, NextResponse } from "next/server";
++
++const TASK_PREFIX = "/tasks";
++const TASK_HALL = "/shop/tasks";
++
++// 需要登录才能看的页面前缀（商户后台 + Worker 任务大厅）
++const PROTECTED_PAGE_PREFIXES = ["/admin", "/shop/tasks"];
++
++function resolveRewriteTarget(pathname: string): string | null {
++  if (pathname === TASK_PREFIX || pathname.startsWith(`${TASK_PREFIX}/`)) {
++    return TASK_HALL + pathname.slice(TASK_PREFIX.length);
++  }
++  return null;
++}
++
++export function middleware(request: NextRequest) {
++  const { pathname } = request.nextUrl;
++
++  // 1) 路径重写（保留原 proxy 行为）
++  const target = resolveRewriteTarget(pathname);
++  const finalPath = target ? target : pathname;
++
++  // 2) 登录态守卫：只拦页面，不拦 API
++  const isPageRoute = !finalPath.startsWith("/api/");
++  const isProtected = PROTECTED_PAGE_PREFIXES.some(
++    (p) => finalPath === p || finalPath.startsWith(`${p}/`)
++  );
++
++  if (isPageRoute && isProtected) {
++    const sessionCookie = request.cookies.get("gb_session")?.value;
++    if (!sessionCookie) {
++      const loginUrl = new URL("/auth", request.url);
++      loginUrl.searchParams.set("next", finalPath);
++      return NextResponse.redirect(loginUrl, 307);
++    }
++  }
++
++  // 3) 应用重写或放行
++  if (target) {
++    return NextResponse.rewrite(new URL(target, request.url));
++  }
++  return NextResponse.next();
++}
++
++export const config = {
++  matcher: [
++    "/admin/:path*",
++    "/tasks/:path*",
++    "/shop/tasks/:path*",
++    // API 也需要匹配，以便将来在 middleware 里统一加安全头；鉴权仍由各 route 负责
++    "/api/admin/:path*",
++    "/api/merchant/:path*",
++    "/api/workers/:path*",
++    "/api/payouts/:path*",
++    "/api/tasks/:path*",
++    "/api/campaigns/:path*",
++  ],
++};
+diff --git a/src/app/api/admin/audits/route.js b/src/app/api/admin/audits/route.js
+index e1fc63e..80c4585 100644
+--- a/src/app/api/admin/audits/route.js
++++ b/src/app/api/admin/audits/route.js
+@@ -10,6 +10,7 @@
+ 
+ import { NextResponse } from "next/server";
+ import { mockSubmissions, mockCampaigns } from "../../tasks/_mock-store";
++import { requireAuthWithRole } from "../../../../database/auth-server";
+ 
+ let db = null;
+ let firebaseAvailable = false;
+@@ -44,9 +45,10 @@ const DEFAULT_WINDOW_HOURS = 48;
+ 
+ export async function GET(request) {
+   try {
+-    const { searchParams } = new URL(request.url);
+-    // 归属由服务端当前商户决定；可选 merchantId 覆盖（本地 mock 调试用）
+-    const merchantId = searchParams.get("merchantId") || process.env.MERCHANT_ID || "mch_placeholder";
++    // P0 修复：商户身份来自 token，禁止信任 query.merchantId
++    const auth = await requireAuthWithRole(request, "MERCHANT");
++    if (auth.error) return auth.error;
++    const merchantId = auth.uid;
+ 
+     const rows = [];
+ 
+diff --git a/src/app/api/admin/campaigns/route.js b/src/app/api/admin/campaigns/route.js
+index 10683b0..f250543 100644
+--- a/src/app/api/admin/campaigns/route.js
++++ b/src/app/api/admin/campaigns/route.js
+@@ -5,6 +5,7 @@
+ 
+ import { NextResponse } from "next/server";
+ import { mockMerchants, mockCampaigns, mockMerchantTransactions } from "../../tasks/_mock-store";
++import { requireAuthWithRole } from "../../../../database/auth-server";
+ 
+ // ---- Firebase Admin 单例（F-CrowdBang）；缺依赖时降级本地 mock，保证本地联调可运行 ----
+ let db = null;
+@@ -60,9 +61,10 @@ const MOCK_MERCHANT_CAMPAIGNS = [
+ 
+ export async function GET(request) {
+   try {
+-    // 商户归属：优先 query 中的 merchantId（前端鉴权会话 UID）
+-    const url = new URL(request.url);
+-    const merchantId = url.searchParams.get("merchantId") || currentMerchantId();
++    // P0 修复：商户身份必须来自 token，禁止信任 query 里传的 merchantId（防 IDOR）
++    const auth = await requireAuthWithRole(request, "MERCHANT");
++    if (auth.error) return auth.error;
++    const merchantId = auth.uid;
+ 
+     if (!firebaseAvailable) {
+       // 返回商户钱包余额 + 该商户任务
+@@ -114,6 +116,10 @@ export async function GET(request) {
+ 
+ export async function POST(request) {
+   try {
++    // P0 修复：商户身份必须来自 token，禁止信任 body 里传的 merchantId
++    const auth = await requireAuthWithRole(request, "MERCHANT");
++    if (auth.error) return auth.error;
++
+     const body = await request.json();
+     const {
+       title,
+@@ -128,7 +134,14 @@ export async function POST(request) {
+       return NextResponse.json({ error: "MISSING_FIELDS" }, { status: 400 });
+     }
+ 
+-    const merchantId = currentMerchantId();
++    const merchantId = auth.uid;
++
++    // P0：托管参数必须为正数（后端二次校验，防抓包传负数）
++    const totalSlotsCheck = Number(escrow_summary?.total_slots);
++    const payoutCheck = Number(escrow_summary?.payout_rate);
++    if (!(totalSlotsCheck > 0) || !(payoutCheck >= 0)) {
++      return NextResponse.json({ error: "INVALID_ESCROW_PARAMS" }, { status: 400 });
++    }
+ 
+     // 托管参数
+     const totalSlots = Number(escrow_summary?.total_slots) || 0;
+diff --git a/src/app/api/admin/submissions/route.js b/src/app/api/admin/submissions/route.js
+index 565927c..94b292e 100644
+--- a/src/app/api/admin/submissions/route.js
++++ b/src/app/api/admin/submissions/route.js
+@@ -6,6 +6,7 @@
+ 
+ import { NextResponse } from "next/server";
+ import { mockSubmissions } from "../../tasks/_mock-store";
++import { requireAuthWithRole } from "../../../../database/auth-server";
+ 
+ let db = null;
+ let firebaseAvailable = false;
+@@ -48,12 +49,16 @@ const MOCK_AUDITS = [
+ 
+ export async function GET(request) {
+   try {
++    // P0 修复：商户身份来自 token
++    const auth = await requireAuthWithRole(request, "MERCHANT");
++    if (auth.error) return auth.error;
++
+     const { searchParams } = new URL(request.url);
+     const campaignId = searchParams.get("campaignId");
+     if (!campaignId) {
+       return NextResponse.json({ error: "CAMPAIGN_ID_REQUIRED" }, { status: 400 });
+     }
+-    const merchantId = currentMerchantId();
++    const merchantId = auth.uid;
+ 
+     if (!firebaseAvailable) {
+       // 从共享 mock 账本取，若无则返回演示审计
+diff --git a/src/app/api/auth/login/route.js b/src/app/api/auth/login/route.js
+index a7fbe83..a65228f 100644
+--- a/src/app/api/auth/login/route.js
++++ b/src/app/api/auth/login/route.js
+@@ -46,7 +46,7 @@ export async function POST(request) {
+         );
+       }
+ 
+-      return NextResponse.json(
++      const loginRes = NextResponse.json(
+         {
+           idToken: data.idToken,
+           uid: data.localId,
+@@ -56,13 +56,23 @@ export async function POST(request) {
+         },
+         { status: 200 }
+       );
++      // P0 修复：写登录态 cookie，供根 middleware 判断是否放行后台页面
++      loginRes.cookies.set("gb_session", data.idToken, {
++        httpOnly: true,
++        secure: process.env.NODE_ENV === "production",
++        sameSite: "lax",
++        path: "/",
++        maxAge: 60 * 60 * 24 * 5,
++      });
++      return loginRes;
+     }
+ 
+     // 本地 mock：返回确定性占位令牌（仅供本地联调，非真实认证）
+     const uid = `uid_${email.split("@")[0]}`;
+-    return NextResponse.json(
++    const mockToken = issueMockToken(uid, role);
++    const mockRes = NextResponse.json(
+       {
+-        idToken: issueMockToken(uid, role),
++        idToken: mockToken,
+         uid,
+         email,
+         role,
+@@ -70,6 +80,14 @@ export async function POST(request) {
+       },
+       { status: 200 }
+     );
++    mockRes.cookies.set("gb_session", mockToken, {
++      httpOnly: true,
++      secure: false,
++      sameSite: "lax",
++      path: "/",
++      maxAge: 60 * 60 * 24 * 5,
++    });
++    return mockRes;
+   } catch (err) {
+     console.error("[auth/login]", err);
+     return NextResponse.json({ error: "INTERNAL_ERROR" }, { status: 500 });
+diff --git a/src/app/api/auth/logout/route.js b/src/app/api/auth/logout/route.js
+new file mode 100644
+index 0000000..aa52c39
+--- /dev/null
++++ b/src/app/api/auth/logout/route.js
+@@ -0,0 +1,13 @@
++// src/app/api/auth/logout/route.js
++// P0 修复：登出时清除 gb_session cookie，防止残留会话被 middleware 误判为已登录
++import { NextResponse } from "next/server";
++
++export async function POST() {
++  const res = NextResponse.json({ ok: true }, { status: 200 });
++  res.cookies.set("gb_session", "", {
++    httpOnly: true,
++    path: "/",
++    maxAge: 0,
++  });
++  return res;
++}
+diff --git a/src/app/api/campaigns/create/route.js b/src/app/api/campaigns/create/route.js
+index 31ab1b9..4df2a9e 100644
+--- a/src/app/api/campaigns/create/route.js
++++ b/src/app/api/campaigns/create/route.js
+@@ -6,6 +6,7 @@
+ 
+ import { NextResponse } from "next/server";
+ import { mockCampaigns, mockMerchants, mockMerchantTransactions } from "../../tasks/_mock-store.js";
++import { requireAuthWithRole } from "../../../../database/auth-server";
+ 
+ let db = null;
+ let firebaseAvailable = false;
+@@ -59,8 +60,12 @@ function validateEscrow(escrow) {
+ 
+ export async function POST(request) {
+   try {
++    // P0 修复：商户身份必须来自 token，禁止信任 body.merchantId/ownerId
++    const auth = await requireAuthWithRole(request, "MERCHANT");
++    if (auth.error) return auth.error;
++
+     const body = await request.json();
+-    const { title, video_url, caption_text, target_hashtags, geotargeting_config, escrow_summary, merchantId, target_account, target_tiktok_account, audit_strategy, audit_auto_approve_hours, brand_hashtag, content_brief, campaign_type, product_name, product_description, brand_tag, comment_link_required, platform_fee, platform, retention_days } = body || {};
++    const { title, video_url, caption_text, target_hashtags, geotargeting_config, escrow_summary, target_account, target_tiktok_account, audit_strategy, audit_auto_approve_hours, brand_hashtag, content_brief, campaign_type, product_name, product_description, brand_tag, comment_link_required, platform_fee, platform, retention_days } = body || {};
+ 
+     // 保留期（防"拿钱删视频"）：视频需保持公开的核验天数，默认 30 天；期间 10% 佣金冻结不可提现
+     const retentionDays = Number(retention_days) > 0 ? Number(retention_days) : 30;
+@@ -81,7 +86,7 @@ export async function POST(request) {
+       return NextResponse.json({ error: escrowCheck.error }, { status: 400 });
+     }
+ 
+-    const ownerId = currentMerchantId(merchantId);
++    const ownerId = auth.uid;
+     // 平台服务费：支持前端显式传入（默认 $2/单），覆盖寄样/视频任务的托管抽成
+     const platformFee = Number(platform_fee) >= 0 ? Number(platform_fee) : (Number(escrow_summary?.platform_fee) >= 0 ? Number(escrow_summary.platform_fee) : 2.0);
+     // 本次发布需从商家可用余额冻结的托管总额 = 名额 × (单条佣金 + 单条平台服务费)
+diff --git a/src/app/api/campaigns/list/route.js b/src/app/api/campaigns/list/route.js
+index b290180..29bc33a 100644
+--- a/src/app/api/campaigns/list/route.js
++++ b/src/app/api/campaigns/list/route.js
+@@ -7,6 +7,7 @@
+ 
+ import { NextResponse } from "next/server";
+ import { mockCampaigns } from "../../tasks/_mock-store.js";
++import { requireAuthWithRole } from "../../../../database/auth-server";
+ 
+ let db = null;
+ let firebaseAvailable = false;
+@@ -120,8 +121,12 @@ function ensureMockSeed() {
+   }
+ }
+ 
+-export async function GET() {
++export async function GET(request) {
+   try {
++    // P0 修复：任务大厅必须登录后才能看（任何角色均可，Worker/Merchant 都可浏览）
++    const auth = await requireAuthWithRole(request);
++    if (auth.error) return auth.error;
++
+     if (!firebaseAvailable) {
+       ensureMockSeed();
+       // 仅返回未满员任务
+diff --git a/src/app/api/merchant/balance/route.js b/src/app/api/merchant/balance/route.js
+index 18b0c9c..659b7e6 100644
+--- a/src/app/api/merchant/balance/route.js
++++ b/src/app/api/merchant/balance/route.js
+@@ -7,6 +7,7 @@
+ // 合规：仅做只读查询，不涉及任何规避/伪造逻辑。
+ import { NextResponse } from "next/server";
+ import { mockMerchants } from "../../tasks/_mock-store";
++import { requireAuthWithRole } from "../../../../database/auth-server";
+ 
+ let db = null;
+ let firebaseAvailable = false;
+@@ -40,12 +41,10 @@ if (
+ 
+ export async function GET(request) {
+   try {
+-    const { searchParams } = new URL(request.url);
+-    const merchantId = searchParams.get("merchantId");
+-
+-    if (!merchantId) {
+-      return NextResponse.json({ error: "MISSING_MERCHANT_ID" }, { status: 400 });
+-    }
++    // P0 修复：商户身份来自 token，禁止信任 query.merchantId（防 IDOR 查任意人余额）
++    const auth = await requireAuthWithRole(request, "MERCHANT");
++    if (auth.error) return auth.error;
++    const merchantId = auth.uid;
+ 
+     let balance = 0;
+     let source = "mock";
+diff --git a/src/app/api/payouts/request/route.js b/src/app/api/payouts/request/route.js
+index d7bb6be..eace425 100644
+--- a/src/app/api/payouts/request/route.js
++++ b/src/app/api/payouts/request/route.js
+@@ -7,6 +7,7 @@
+ 
+ import { NextResponse } from "next/server";
+ import { mockUsers, mockPayoutRequests } from "../../tasks/_mock-store";
++import { requireAuthWithRole } from "../../../../database/auth-server";
+ import { createPayout, paypalCredsReady } from "@/lib/paypal";
+ 
+ let db = null;
+@@ -58,13 +59,17 @@ function validateAmount(amount) {
+ 
+ export async function POST(request) {
+   try {
++    // P0 修复：workerId 必须来自 token，禁止信任 body 传的 workerId（防冒名提现）
++    const auth = await requireAuthWithRole(request, "WORKER");
++    if (auth.error) return auth.error;
++
+     const body = await request.json();
+     const {
+-      workerId = currentWorkerId(),
+       amount,
+       payoutMethod,   // 如 "paypal"
+       destination,    // 提现账户地址，如 PayPal 邮箱
+     } = body || {};
++    const workerId = auth.uid;
+ 
+     if (!amount || !payoutMethod || !destination) {
+       return NextResponse.json({ error: "MISSING_FIELDS" }, { status: 400 });
+diff --git a/src/app/api/tasks/publish-video/route.js b/src/app/api/tasks/publish-video/route.js
+index 0aeffb4..7e8dd01 100644
+--- a/src/app/api/tasks/publish-video/route.js
++++ b/src/app/api/tasks/publish-video/route.js
+@@ -6,6 +6,7 @@
+ import { NextResponse } from "next/server";
+ import { mockSubmissions, applyFlatUpdate } from "../_mock-store";
+ import { resolveTikTokBearer } from "../../tiktok/oauth/_resolve";
++import { requireAuthWithRole } from "../../../../database/auth-server";
+ 
+ // ---- Firebase Admin 单例（F-CrowdBang）；缺依赖时降级本地 mock，保证本地联调可运行 ----
+ let db = null;
+@@ -40,8 +41,13 @@ if (
+ 
+ export async function POST(request) {
+   try {
+-    const { submissionId, workerId, publishedVideoId, merchantId } = await request.json();
+-    if (!submissionId || !workerId || !publishedVideoId) {
++    // P0 修复：worker 身份来自 token，禁止信任 body.workerId
++    const auth = await requireAuthWithRole(request, "WORKER");
++    if (auth.error) return auth.error;
++
++    const { submissionId, publishedVideoId } = await request.json();
++    const workerId = auth.uid;
++    if (!submissionId || !publishedVideoId) {
+       return NextResponse.json({ error: "MISSING_FIELDS" }, { status: 400 });
+     }
+ 
+diff --git a/src/app/api/workers/gps-check/route.js b/src/app/api/workers/gps-check/route.js
+new file mode 100644
+index 0000000..d24f3a7
+--- /dev/null
++++ b/src/app/api/workers/gps-check/route.js
+@@ -0,0 +1,99 @@
++// src/app/api/workers/gps-check/route.js
++// G-CrowdBang · P0 修复：Worker GPS 现场核验接口
++// 职责：Worker 在认领任务前/提交视频前，上报手机硬件 GPS 坐标 + 设备指纹 + 时间戳。
++// 安全：
++//   1. 必须登录（Worker 角色）；
++//   2. 时间戳与服务器时间差 > 60 秒拒绝（防重放旧定位包）；
++//   3. 粗判坐标是否在美国本土矩形范围内（精确边界可后续接 GeoHash/第三方）；
++//   4. 设备指纹 + workerId 落库，便于风控比对同一账号多设备/异地跳变。
++import { NextResponse } from "next/server";
++import { requireAuthWithRole } from "../../../../database/auth-server";
++
++let db = null;
++let firebaseAvailable = false;
++try {
++  const { initializeApp, cert, getApps } = await import("firebase-admin/app");
++  const { getFirestore } = await import("firebase-admin/firestore");
++  if (!getApps().length) {
++    initializeApp({
++      credential: cert({
++        projectId: process.env.FIREBASE_PROJECT_ID,
++        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
++        privateKey: (process.env.FIREBASE_PRIVATE_KEY || "").replace(/\\n/g, "\n"),
++      }),
++    });
++  }
++  db = getFirestore();
++  firebaseAvailable = true;
++} catch (e) {
++  console.warn("[workers/gps-check] firebase-admin unavailable, using mock");
++}
++
++if (
++  !process.env.FIREBASE_PROJECT_ID ||
++  process.env.FIREBASE_PROJECT_ID === "f-crowdbang-test" ||
++  !process.env.FIREBASE_PRIVATE_KEY ||
++  String(process.env.FIREBASE_PRIVATE_KEY).includes("TEST_ONLY_PLACEHOLDER")
++) {
++  firebaseAvailable = false;
++}
++
++// 美国本土粗判矩形（不含阿拉斯加/夏威夷，够用）
++function isWithinUSMainland(lat, lng) {
++  return lat >= 24.0 && lat <= 49.5 && lng >= -125.5 && lng <= -66.5;
++}
++
++export async function POST(request) {
++  try {
++    const auth = await requireAuthWithRole(request, "WORKER");
++    if (auth.error) return auth.error;
++
++    const body = await request.json();
++    const { latitude, longitude, accuracy, timestamp, deviceFingerprint } = body || {};
++
++    const lat = Number(latitude);
++    const lng = Number(longitude);
++    const ts = Number(timestamp);
++
++    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
++      return NextResponse.json({ error: "INVALID_COORDINATES" }, { status: 400 });
++    }
++    if (!deviceFingerprint || typeof deviceFingerprint !== "string") {
++      return NextResponse.json({ error: "DEVICE_FINGERPRINT_REQUIRED" }, { status: 400 });
++    }
++
++    // 时间戳防重放：60 秒窗口
++    const now = Date.now();
++    if (!ts || Math.abs(now - ts) > 60 * 1000) {
++      return NextResponse.json({ error: "STALE_TIMESTAMP", hint: "re-request GPS within 60s" }, { status: 400 });
++    }
++
++    const inUS = isWithinUSMainland(lat, lng);
++    const accuracyMeters = Number(accuracy) || 9999;
++
++    const record = {
++      worker_id: auth.uid,
++      lat,
++      lng,
++      accuracy_meters: accuracyMeters,
++      device_fingerprint: deviceFingerprint,
++      timestamp_received: now,
++      client_timestamp: ts,
++      verified: inUS,
++    };
++
++    if (firebaseAvailable) {
++      await db.collection("worker_gps_checks").doc(`${auth.uid}_${now}`).set(record);
++    }
++
++    return NextResponse.json({
++      verified: inUS,
++      inUS: true,
++      accuracy_meters: accuracyMeters,
++      server_time: now,
++    }, { status: inUS ? 200 : 403 });
++  } catch (err) {
++    console.error("[workers/gps-check]", err);
++    return NextResponse.json({ error: "INTERNAL_ERROR" }, { status: 500 });
++  }
++}
+diff --git a/src/app/api/workers/my-submissions/route.js b/src/app/api/workers/my-submissions/route.js
+index 038a153..f3a7139 100644
+--- a/src/app/api/workers/my-submissions/route.js
++++ b/src/app/api/workers/my-submissions/route.js
+@@ -6,6 +6,7 @@
+ 
+ import { NextResponse } from "next/server";
+ import { mockSubmissions, mockUsers } from "../../tasks/_mock-store";
++import { requireAuthWithRole } from "../../../../database/auth-server";
+ 
+ let db = null;
+ let firebaseAvailable = false;
+@@ -43,7 +44,10 @@ function currentWorkerId() {
+ 
+ export async function GET(request) {
+   try {
+-    const workerId = currentWorkerId();
++    // P0 修复：workerId 必须来自 token，禁止用环境变量兜底（防越权看他人接单记录）
++    const auth = await requireAuthWithRole(request, "WORKER");
++    if (auth.error) return auth.error;
++    const workerId = auth.uid;
+ 
+     if (!firebaseAvailable) {
+       // 本地 mock：从共享 mock 账本中筛出该 worker 的记录；为空则返回演示记录
+diff --git a/src/database/auth-server.js b/src/database/auth-server.js
+index d1dfff4..89b88de 100644
+--- a/src/database/auth-server.js
++++ b/src/database/auth-server.js
+@@ -8,6 +8,7 @@
+ 
+ import { getApps, initializeApp, cert } from "firebase-admin/app";
+ import { getAuth } from "firebase-admin/auth";
++import { NextResponse } from "next/server";
+ 
+ // ---- 单一实例初始化（幂等）----
+ let authInstance = null;
+@@ -108,6 +109,36 @@ export async function requireAuth(request, { allowedRoles } = {}) {
+   return result; // { ok, uid, role, email }
+ }
+ 
++// ---- 角色归一化：统一转大写，兼容 "worker"/"WORKER"/"merchant"/"MERCHANT" ----
++export function normalizeRole(role) {
++  return String(role || "").toUpperCase();
++}
++
++// ---- 组合鉴权：校验 token + 角色，直接返回 NextResponse 错误 ----
++// 用法：
++//   const auth = await requireAuthWithRole(request, "MERCHANT");
++//   if (auth.error) return auth.error;
++//   const uid = auth.uid;
++export async function requireAuthWithRole(request, allowedRole) {
++  const token = extractBearerToken(request);
++  if (!token) {
++    return { error: NextResponse.json({ error: "UNAUTHORIZED", hint: "missing bearer token" }, { status: 401 }) };
++  }
++  const result = await verifyToken(token);
++  if (!result.ok) {
++    return { error: NextResponse.json({ error: result.error || "UNAUTHORIZED" }, { status: 401 }) };
++  }
++  if (allowedRole && normalizeRole(result.role) !== normalizeRole(allowedRole)) {
++    return {
++      error: NextResponse.json(
++        { error: "FORBIDDEN", expected: allowedRole, actual: result.role },
++        { status: 403 }
++      ),
++    };
++  }
++  return { uid: result.uid, role: normalizeRole(result.role), email: result.email, tokenType: result.tokenType };
++}
++
+ // ---- 是否可用真实 Admin Auth（供调用方决定走真实还是 mock）----
+ export function isAuthReady() {
+   ensureAdminAuth();
+-- 
+2.34.1
+

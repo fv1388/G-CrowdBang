@@ -6,6 +6,7 @@
 
 import { NextResponse } from "next/server";
 import { mockSubmissions } from "../../tasks/_mock-store";
+import { requireAuthWithRole } from "../../../../database/auth-server";
 
 let db = null;
 let firebaseAvailable = false;
@@ -48,12 +49,16 @@ const MOCK_AUDITS = [
 
 export async function GET(request) {
   try {
+    // P0 修复：商户身份来自 token
+    const auth = await requireAuthWithRole(request, "MERCHANT");
+    if (auth.error) return auth.error;
+
     const { searchParams } = new URL(request.url);
     const campaignId = searchParams.get("campaignId");
     if (!campaignId) {
       return NextResponse.json({ error: "CAMPAIGN_ID_REQUIRED" }, { status: 400 });
     }
-    const merchantId = currentMerchantId();
+    const merchantId = auth.uid;
 
     if (!firebaseAvailable) {
       // 从共享 mock 账本取，若无则返回演示审计

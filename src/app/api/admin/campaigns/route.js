@@ -5,6 +5,7 @@
 
 import { NextResponse } from "next/server";
 import { mockMerchants, mockCampaigns, mockMerchantTransactions } from "../../tasks/_mock-store";
+import { requireAuthWithRole } from "../../../../database/auth-server";
 
 // ---- Firebase Admin 单例（F-CrowdBang）；缺依赖时降级本地 mock，保证本地联调可运行 ----
 let db = null;
@@ -60,9 +61,10 @@ const MOCK_MERCHANT_CAMPAIGNS = [
 
 export async function GET(request) {
   try {
-    // 商户归属：优先 query 中的 merchantId（前端鉴权会话 UID）
-    const url = new URL(request.url);
-    const merchantId = url.searchParams.get("merchantId") || currentMerchantId();
+    // P0 修复：商户身份必须来自 token，禁止信任 query 里传的 merchantId（防 IDOR）
+    const auth = await requireAuthWithRole(request, "MERCHANT");
+    if (auth.error) return auth.error;
+    const merchantId = auth.uid;
 
     if (!firebaseAvailable) {
       // 返回商户钱包余额 + 该商户任务
@@ -114,6 +116,10 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
+    // P0 修复：商户身份必须来自 token，禁止信任 body 里传的 merchantId
+    const auth = await requireAuthWithRole(request, "MERCHANT");
+    if (auth.error) return auth.error;
+
     const body = await request.json();
     const {
       title,
@@ -128,7 +134,14 @@ export async function POST(request) {
       return NextResponse.json({ error: "MISSING_FIELDS" }, { status: 400 });
     }
 
-    const merchantId = currentMerchantId();
+    const merchantId = auth.uid;
+
+    // P0：托管参数必须为正数（后端二次校验，防抓包传负数）
+    const totalSlotsCheck = Number(escrow_summary?.total_slots);
+    const payoutCheck = Number(escrow_summary?.payout_rate);
+    if (!(totalSlotsCheck > 0) || !(payoutCheck >= 0)) {
+      return NextResponse.json({ error: "INVALID_ESCROW_PARAMS" }, { status: 400 });
+    }
 
     // 托管参数
     const totalSlots = Number(escrow_summary?.total_slots) || 0;

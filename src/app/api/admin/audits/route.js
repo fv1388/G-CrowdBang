@@ -10,6 +10,7 @@
 
 import { NextResponse } from "next/server";
 import { mockSubmissions, mockCampaigns } from "../../tasks/_mock-store";
+import { requireAuthWithRole } from "../../../../database/auth-server";
 
 let db = null;
 let firebaseAvailable = false;
@@ -44,9 +45,10 @@ const DEFAULT_WINDOW_HOURS = 48;
 
 export async function GET(request) {
   try {
-    const { searchParams } = new URL(request.url);
-    // 归属由服务端当前商户决定；可选 merchantId 覆盖（本地 mock 调试用）
-    const merchantId = searchParams.get("merchantId") || process.env.MERCHANT_ID || "mch_placeholder";
+    // P0 修复：商户身份来自 token，禁止信任 query.merchantId
+    const auth = await requireAuthWithRole(request, "MERCHANT");
+    if (auth.error) return auth.error;
+    const merchantId = auth.uid;
 
     const rows = [];
 

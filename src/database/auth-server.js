@@ -8,6 +8,7 @@
 
 import { getApps, initializeApp, cert } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
+import { NextResponse } from "next/server";
 
 // ---- 单一实例初始化（幂等）----
 let authInstance = null;
@@ -106,6 +107,36 @@ export async function requireAuth(request, { allowedRoles } = {}) {
   }
 
   return result; // { ok, uid, role, email }
+}
+
+// ---- 角色归一化：统一转大写，兼容 "worker"/"WORKER"/"merchant"/"MERCHANT" ----
+export function normalizeRole(role) {
+  return String(role || "").toUpperCase();
+}
+
+// ---- 组合鉴权：校验 token + 角色，直接返回 NextResponse 错误 ----
+// 用法：
+//   const auth = await requireAuthWithRole(request, "MERCHANT");
+//   if (auth.error) return auth.error;
+//   const uid = auth.uid;
+export async function requireAuthWithRole(request, allowedRole) {
+  const token = extractBearerToken(request);
+  if (!token) {
+    return { error: NextResponse.json({ error: "UNAUTHORIZED", hint: "missing bearer token" }, { status: 401 }) };
+  }
+  const result = await verifyToken(token);
+  if (!result.ok) {
+    return { error: NextResponse.json({ error: result.error || "UNAUTHORIZED" }, { status: 401 }) };
+  }
+  if (allowedRole && normalizeRole(result.role) !== normalizeRole(allowedRole)) {
+    return {
+      error: NextResponse.json(
+        { error: "FORBIDDEN", expected: allowedRole, actual: result.role },
+        { status: 403 }
+      ),
+    };
+  }
+  return { uid: result.uid, role: normalizeRole(result.role), email: result.email, tokenType: result.tokenType };
 }
 
 // ---- 是否可用真实 Admin Auth（供调用方决定走真实还是 mock）----

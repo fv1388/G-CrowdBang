@@ -6,6 +6,7 @@
 
 import { NextResponse } from "next/server";
 import { mockCampaigns, mockMerchants, mockMerchantTransactions } from "../../tasks/_mock-store.js";
+import { requireAuthWithRole } from "../../../../database/auth-server";
 
 let db = null;
 let firebaseAvailable = false;
@@ -59,8 +60,12 @@ function validateEscrow(escrow) {
 
 export async function POST(request) {
   try {
+    // P0 修复：商户身份必须来自 token，禁止信任 body.merchantId/ownerId
+    const auth = await requireAuthWithRole(request, "MERCHANT");
+    if (auth.error) return auth.error;
+
     const body = await request.json();
-    const { title, video_url, caption_text, target_hashtags, geotargeting_config, escrow_summary, merchantId, target_account, target_tiktok_account, audit_strategy, audit_auto_approve_hours, brand_hashtag, content_brief, campaign_type, product_name, product_description, brand_tag, comment_link_required, platform_fee, platform, retention_days } = body || {};
+    const { title, video_url, caption_text, target_hashtags, geotargeting_config, escrow_summary, target_account, target_tiktok_account, audit_strategy, audit_auto_approve_hours, brand_hashtag, content_brief, campaign_type, product_name, product_description, brand_tag, comment_link_required, platform_fee, platform, retention_days } = body || {};
 
     // 保留期（防"拿钱删视频"）：视频需保持公开的核验天数，默认 30 天；期间 10% 佣金冻结不可提现
     const retentionDays = Number(retention_days) > 0 ? Number(retention_days) : 30;
@@ -81,7 +86,7 @@ export async function POST(request) {
       return NextResponse.json({ error: escrowCheck.error }, { status: 400 });
     }
 
-    const ownerId = currentMerchantId(merchantId);
+    const ownerId = auth.uid;
     // 平台服务费：支持前端显式传入（默认 $2/单），覆盖寄样/视频任务的托管抽成
     const platformFee = Number(platform_fee) >= 0 ? Number(platform_fee) : (Number(escrow_summary?.platform_fee) >= 0 ? Number(escrow_summary.platform_fee) : 2.0);
     // 本次发布需从商家可用余额冻结的托管总额 = 名额 × (单条佣金 + 单条平台服务费)

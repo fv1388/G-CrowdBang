@@ -7,6 +7,7 @@
 // 合规：仅做只读查询，不涉及任何规避/伪造逻辑。
 import { NextResponse } from "next/server";
 import { mockMerchants } from "../../tasks/_mock-store";
+import { requireAuthWithRole } from "../../../../database/auth-server";
 
 let db = null;
 let firebaseAvailable = false;
@@ -40,12 +41,10 @@ if (
 
 export async function GET(request) {
   try {
-    const { searchParams } = new URL(request.url);
-    const merchantId = searchParams.get("merchantId");
-
-    if (!merchantId) {
-      return NextResponse.json({ error: "MISSING_MERCHANT_ID" }, { status: 400 });
-    }
+    // P0 修复：商户身份来自 token，禁止信任 query.merchantId（防 IDOR 查任意人余额）
+    const auth = await requireAuthWithRole(request, "MERCHANT");
+    if (auth.error) return auth.error;
+    const merchantId = auth.uid;
 
     let balance = 0;
     let source = "mock";

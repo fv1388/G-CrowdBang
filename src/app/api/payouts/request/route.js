@@ -7,6 +7,7 @@
 
 import { NextResponse } from "next/server";
 import { mockUsers, mockPayoutRequests } from "../../tasks/_mock-store";
+import { requireAuthWithRole } from "../../../../database/auth-server";
 import { createPayout, paypalCredsReady } from "@/lib/paypal";
 
 let db = null;
@@ -58,13 +59,17 @@ function validateAmount(amount) {
 
 export async function POST(request) {
   try {
+    // P0 修复：workerId 必须来自 token，禁止信任 body 传的 workerId（防冒名提现）
+    const auth = await requireAuthWithRole(request, "WORKER");
+    if (auth.error) return auth.error;
+
     const body = await request.json();
     const {
-      workerId = currentWorkerId(),
       amount,
       payoutMethod,   // 如 "paypal"
       destination,    // 提现账户地址，如 PayPal 邮箱
     } = body || {};
+    const workerId = auth.uid;
 
     if (!amount || !payoutMethod || !destination) {
       return NextResponse.json({ error: "MISSING_FIELDS" }, { status: 400 });

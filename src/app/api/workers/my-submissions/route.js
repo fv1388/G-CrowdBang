@@ -6,6 +6,7 @@
 
 import { NextResponse } from "next/server";
 import { mockSubmissions, mockUsers } from "../../tasks/_mock-store";
+import { requireAuthWithRole } from "../../../../database/auth-server";
 
 let db = null;
 let firebaseAvailable = false;
@@ -43,7 +44,10 @@ function currentWorkerId() {
 
 export async function GET(request) {
   try {
-    const workerId = currentWorkerId();
+    // P0 修复：workerId 必须来自 token，禁止用环境变量兜底（防越权看他人接单记录）
+    const auth = await requireAuthWithRole(request, "WORKER");
+    if (auth.error) return auth.error;
+    const workerId = auth.uid;
 
     if (!firebaseAvailable) {
       // 本地 mock：从共享 mock 账本中筛出该 worker 的记录；为空则返回演示记录

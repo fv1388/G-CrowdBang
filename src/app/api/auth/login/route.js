@@ -46,7 +46,7 @@ export async function POST(request) {
         );
       }
 
-      return NextResponse.json(
+      const loginRes = NextResponse.json(
         {
           idToken: data.idToken,
           uid: data.localId,
@@ -56,13 +56,23 @@ export async function POST(request) {
         },
         { status: 200 }
       );
+      // P0 修复：写登录态 cookie，供根 middleware 判断是否放行后台页面
+      loginRes.cookies.set("gb_session", data.idToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: 60 * 60 * 24 * 5,
+      });
+      return loginRes;
     }
 
     // 本地 mock：返回确定性占位令牌（仅供本地联调，非真实认证）
     const uid = `uid_${email.split("@")[0]}`;
-    return NextResponse.json(
+    const mockToken = issueMockToken(uid, role);
+    const mockRes = NextResponse.json(
       {
-        idToken: issueMockToken(uid, role),
+        idToken: mockToken,
         uid,
         email,
         role,
@@ -70,6 +80,14 @@ export async function POST(request) {
       },
       { status: 200 }
     );
+    mockRes.cookies.set("gb_session", mockToken, {
+      httpOnly: true,
+      secure: false,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 5,
+    });
+    return mockRes;
   } catch (err) {
     console.error("[auth/login]", err);
     return NextResponse.json({ error: "INTERNAL_ERROR" }, { status: 500 });

@@ -7,6 +7,7 @@
 
 import { NextResponse } from "next/server";
 import { mockCampaigns } from "../../tasks/_mock-store.js";
+import { requireAuthWithRole } from "../../../../database/auth-server";
 
 let db = null;
 let firebaseAvailable = false;
@@ -120,8 +121,12 @@ function ensureMockSeed() {
   }
 }
 
-export async function GET() {
+export async function GET(request) {
   try {
+    // P0 修复：任务大厅必须登录后才能看（任何角色均可，Worker/Merchant 都可浏览）
+    const auth = await requireAuthWithRole(request);
+    if (auth.error) return auth.error;
+
     if (!firebaseAvailable) {
       ensureMockSeed();
       // 仅返回未满员任务

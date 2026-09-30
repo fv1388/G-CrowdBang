@@ -6,6 +6,7 @@
 import { NextResponse } from "next/server";
 import { mockSubmissions, applyFlatUpdate } from "../_mock-store";
 import { resolveTikTokBearer } from "../../tiktok/oauth/_resolve";
+import { requireAuthWithRole } from "../../../../database/auth-server";
 
 // ---- Firebase Admin 单例（F-CrowdBang）；缺依赖时降级本地 mock，保证本地联调可运行 ----
 let db = null;
@@ -40,8 +41,13 @@ if (
 
 export async function POST(request) {
   try {
-    const { submissionId, workerId, publishedVideoId, merchantId } = await request.json();
-    if (!submissionId || !workerId || !publishedVideoId) {
+    // P0 修复：worker 身份来自 token，禁止信任 body.workerId
+    const auth = await requireAuthWithRole(request, "WORKER");
+    if (auth.error) return auth.error;
+
+    const { submissionId, publishedVideoId } = await request.json();
+    const workerId = auth.uid;
+    if (!submissionId || !publishedVideoId) {
       return NextResponse.json({ error: "MISSING_FIELDS" }, { status: 400 });
     }
 
