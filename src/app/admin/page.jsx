@@ -37,7 +37,7 @@ export default function MerchantConsole() {
   const [videoFile, setVideoFile] = useState(null); // 选中的本地 mp4 文件对象
   const [caption, setCaption] = useState(""); // 引流带货文案（caption_text）
   const [totalSlots, setTotalSlots] = useState("");
-  const [payoutRate, setPayoutRate] = useState("5"); // 单发视频老外佣金（默认 $5）
+  const [payoutRate, setPayoutRate] = useState("6.5"); // 单发视频老外佣金（已锁死）（默认 $5）
   const [auditHours, setAuditHours] = useState("48"); // 人工核验超时自动放行窗口（小时），默认 48h
   // ---- 任务类型 + 寄样带货字段 ----
   const [campaignType, setCampaignType] = useState("video_post"); // video_post=视频代发 / product_sample=寄样带货
@@ -45,7 +45,7 @@ export default function MerchantConsole() {
   const [productDescription, setProductDescription] = useState(""); // 寄样：产品说明
   const [brandTag, setBrandTag] = useState(""); // 寄样：标题@的品牌账号
   const [commentLinkRequired, setCommentLinkRequired] = useState(true); // 寄样：评论区挂链接
-  const [platformFee, setPlatformFee] = useState("1.5"); // 单发视频平台服务费（默认 $1.5）
+  const [platformFee, setPlatformFee] = useState("1.5"); // 单发视频平台服务费（已锁死）（默认 $1.5）
   const [platform, setPlatform] = useState("tiktok"); // 目标发布平台（多平台 UGC）
   const [publishState, setPublishState] = useState("idle");
   const [publishMsg, setPublishMsg] = useState("");
@@ -57,12 +57,16 @@ export default function MerchantConsole() {
   //   product_sample / product_no_sample 创作视频：达人 $10 + 平台 $3 = 商户出资 $13
   const applyTypePricing = (type) => {
     setCampaignType(type);
+    // 价格锁死：按任务类型固定，商户不可改
     if (type === "video_post") {
-      setPayoutRate("5");
+      setPayoutRate("6.5");
       setPlatformFee("1.5");
+    } else if (type === "product_sample") {
+      setPayoutRate("13");
+      setPlatformFee("3");
     } else {
       setPayoutRate("10");
-      setPlatformFee("3");
+      setPlatformFee("2");
     }
   };
 
@@ -368,13 +372,11 @@ export default function MerchantConsole() {
               <p className="text-xs text-gray-500">平台单条服务费（美元/任务，托管冻结，核验放行后归平台）</p>
               <input
                 type="number"
-                min="0"
-                step="0.01"
                 value={platformFee}
-                onChange={(e) => setPlatformFee(e.target.value)}
-                placeholder="e.g. 4.00"
-                className="mt-1 w-full rounded-xl bg-gray-50 border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                disabled
+                className="mt-1 w-full rounded-xl bg-gray-100 border border-gray-300 px-3 py-2 text-sm text-gray-500 cursor-not-allowed"
               />
+              <p className="mt-1 text-xs text-emerald-600">🔒 价格已锁定（按任务类型自动定价）</p>
             </div>
             {/* 目标发布平台（多平台 UGC：老外将发布到该平台的自己账号） */}
             <div className="sm:col-span-2">
@@ -518,13 +520,11 @@ export default function MerchantConsole() {
               <p className="text-xs text-gray-500">单次佣金（美元/任务）</p>
               <input
                 type="number"
-                min="0"
-                step="0.01"
                 value={payoutRate}
-                onChange={(e) => setPayoutRate(e.target.value)}
-                placeholder="e.g. 3.00"
-                className="mt-1 w-full rounded-xl bg-gray-50 border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                disabled
+                className="mt-1 w-full rounded-xl bg-gray-100 border border-gray-300 px-3 py-2 text-sm text-gray-500 cursor-not-allowed"
               />
+              <p className="mt-1 text-xs text-emerald-600">🔒 佣金已锁定（按任务类型自动定价）</p>
             </div>
 
             {/* 人工核验超时自动放行窗口（小时）：商家不点核验时，到期系统自动放行分账 */}
