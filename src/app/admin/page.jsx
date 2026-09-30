@@ -366,18 +366,6 @@ export default function MerchantConsole() {
               </div>
             </div>
 
-            {/* 平台单条服务费（平台收入核心；商家发单时托管冻结，核验放行后归平台） */}
-            <div className="sm:col-span-2">
-              <label className="block text-sm text-gray-700">Platform Fee ($/task)</label>
-              <p className="text-xs text-gray-500">平台单条服务费（美元/任务，托管冻结，核验放行后归平台）</p>
-              <input
-                type="number"
-                value={platformFee}
-                disabled
-                className="mt-1 w-full rounded-xl bg-gray-100 border border-gray-300 px-3 py-2 text-sm text-gray-500 cursor-not-allowed"
-              />
-              <p className="mt-1 text-xs text-emerald-600">🔒 价格已锁定（按任务类型自动定价）</p>
-            </div>
             {/* 目标发布平台（多平台 UGC：老外将发布到该平台的自己账号） */}
             <div className="sm:col-span-2">
               <label className="block text-sm text-gray-700">Publish Platform</label>
