@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { mockMerchants } from "../../../tasks/_mock-store";
+import { mockMerchants } from "../../tasks/_mock-store";
 
 let db = null;
 let firebaseAvailable = false;
