@@ -390,19 +390,7 @@ export default function AuthPage() {
           </button>
         </form>
 
-        {/* 4) Google 一键登录（官方 GSI SDK 按钮） */}
-        <div className="mt-4">
-          <div className="flex items-center gap-3 text-[11px] text-gray-500 mb-3">
-            <span className="flex-1 h-px bg-gray-800" />
-            or · 或
-            <span className="flex-1 h-px bg-gray-800" />
-          </div>
-          <div className="g_id_signin flex justify-center"></div>
-          <p className="mt-1 text-center text-[11px] text-gray-500">
-            Continue with Google / 用谷歌一键登录
-          </p>
-        </div>
-        <Script src="https://accounts.google.com/gsi/client" async defer strategy="afterInteractive" />
+        {/* Google 登录暂时隐藏（需在 Firebase/Google Cloud 授权域名后再开启） */}
 
         {/* 模式切换：登录 ⇄ 注册 */}
         <div className="mt-5 text-center text-sm text-gray-600">
