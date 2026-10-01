@@ -288,6 +288,12 @@ export async function signInWithEmail(email, password) {
 // 登出系统大闸（同时清理 Google 本地会话，防止登出后页面仍被放行）
 export async function logOutSession() {
   clearGoogleSession();
+  // P0 对接修复：同步清理后端 gb_session cookie，防止 middleware 误判已登录
+  try {
+    await fetch("/api/auth/logout", { method: "POST" });
+  } catch {
+    /* 网络异常时忽略，cookie 到期自动失效 */
+  }
   if (firebaseConfigReady()) {
     await fbSignOut(getAuthInstance());
   } else {

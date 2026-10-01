@@ -16,6 +16,7 @@ import { getApps, initializeApp, cert } from "firebase-admin/app";
 import { getAuth as adminAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
+import { issueMockToken } from "../../../../database/auth-server";
 
 // ---- Firebase Admin 单例初始化（幂等；凭证缺失/占位 → mock 模式）----
 function adminApp() {
@@ -67,15 +68,25 @@ export async function POST(request) {
 
     const fbApp = adminApp();
 
-    // 3) mock 环境（无真实服务账号凭证）→ 返回确定性会话，前端走本地联调
+    // 3) mock 环境（无真实服务账号凭证）→ 返回确定性会话 + 直接落 gb_session cookie
+    //    （P0 对接修复：middleware 只认 cookie，JSON 会话无法放行受保护页面）
     if (!fbApp) {
-      return NextResponse.json({
+      const mockUid = `mock_google_${Date.now().toString(36)}`;
+      const mockRes = NextResponse.json({
         success: true,
-        uid: `mock_google_${Date.now().toString(36)}`,
+        uid: mockUid,
         email: normalizedEmail,
         role: targetRole,
         message: "Google 登录成功（本地 Mock）。",
       });
+      mockRes.cookies.set("gb_session", issueMockToken(mockUid, targetRole.toLowerCase()), {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: 60 * 60 * 24 * 5,
+      });
+      return mockRes;
     }
 
     // 4) 真实模式：按邮箱查找/创建 Firebase 用户 + 写入 users 多租户账本
@@ -115,11 +126,16 @@ export async function POST(request) {
       }
     }
 
+    // 6) 签发 customToken：前端 signInWithCustomToken 建立 Firebase 会话后，
+    //    再拿 idToken 调 /api/auth/session 落 gb_session cookie（P0 对接修复）
+    const customToken = await auth.createCustomToken(uid);
+
     return NextResponse.json({
       success: true,
       uid,
       email: normalizedEmail,
       role: userRole,
+      customToken,
       message: "Google 登录成功！",
     });
   } catch (err) {

@@ -50,10 +50,31 @@ function ensureAdminAuth() {
 }
 
 // ---- 从请求 Headers 提取 Bearer 令牌 ----
+// P0 对接修复：页面 fetch 普遍不带 Authorization 头，兜底读取 gb_session cookie
+// （cookie 里存的就是登录网关落下的 idToken / mock 令牌，语义一致）
 export function extractBearerToken(request) {
   const header = request.headers.get("authorization") || "";
   const match = header.match(/^Bearer\s+(.+)$/i);
-  return match ? match[1].trim() : null;
+  if (match) return match[1].trim();
+  try {
+    const cookieToken = request.cookies?.get?.("gb_session")?.value;
+    if (cookieToken) return cookieToken;
+  } catch {
+    /* 非 NextRequest 场景静默忽略 */
+  }
+  return null;
+}
+
+// ---- 真实模式角色对账：idToken 通常无 role claim，回查 users 账本 ----
+async function lookupUserRole(uid) {
+  try {
+    const { getFirestore } = await import("firebase-admin/firestore");
+    const snap = await getFirestore().collection("users").doc(uid).get();
+    if (snap.exists) return snap.data().role || null;
+  } catch (e) {
+    console.warn("[auth-server] role lookup failed:", e?.message);
+  }
+  return null;
 }
 
 // ---- 令牌校验：真实 admin 校验 或 本地 mock 解码 ----
@@ -65,10 +86,15 @@ export async function verifyToken(token) {
   if (admin && adminReady) {
     try {
       const decoded = await admin.verifyIdToken(token);
+      let role = decoded.role || decoded.role_from_claim || null;
+      if (!role) {
+        // idToken 无角色烙印 → 回查 users 多租户账本（requireAuthWithRole 依赖此处）
+        role = (await lookupUserRole(decoded.uid)) || "worker";
+      }
       return {
         ok: true,
         uid: decoded.uid,
-        role: decoded.role || decoded.role_from_claim || "worker",
+        role,
         email: decoded.email || null,
         tokenType: "firebase",
       };

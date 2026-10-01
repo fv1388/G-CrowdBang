@@ -23,7 +23,7 @@
 
 import { useState, useEffect } from "react";
 import Script from "next/script";
-import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
+import { GoogleAuthProvider, signInWithCredential, signInWithCustomToken } from "firebase/auth";
 import {
   auth as fbAuth,
   signUpWithEmail,
@@ -101,6 +101,21 @@ export default function AuthPage() {
         s = await signInWithEmail(email, password);
       }
       console.log("[auth] ok", s);
+
+      // P0 对接修复：客户端 SDK 登录不经过后端，gb_session cookie 不会被写入，
+      // middleware 会把 /admin、/shop/tasks 的跳转 307 弹回本页。
+      // 因此跳转前先调登录网关（真实模式走 Identity Toolkit 换 idToken 落 cookie；
+      // mock 模式落 mock 占位 cookie），保证页面守卫放行。
+      try {
+        await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password, role: String(s?.role || role).toLowerCase() }),
+        });
+      } catch (cookieErr) {
+        console.warn("[auth] session cookie bootstrap failed", cookieErr);
+      }
+
       window.location.href = routeByRole(s?.role);
     } catch (err) {
       const code = err?.code || "";
@@ -160,12 +175,32 @@ export default function AuthPage() {
         setLoading(false);
         return;
       }
-      // 2) 用 GSI 的 ID Token 建立 Firebase 会话（保持现有鉴权体系，其他页面不动）
+      // 2) 建立 Firebase 会话：优先用后端签发的 customToken（不依赖 Google provider 启用），
+      //    否则回退 GSI 凭证直连（需在 Firebase 控制台启用 Google 登录 provider）
       try {
-        const cred = GoogleAuthProvider.credential(credential);
-        await signInWithCredential(fbAuth, cred);
+        if (data?.customToken) {
+          await signInWithCustomToken(fbAuth, data.customToken);
+        } else {
+          const cred = GoogleAuthProvider.credential(credential);
+          await signInWithCredential(fbAuth, cred);
+        }
       } catch (fbErr) {
-        console.warn("[auth] firebase credential link skipped", fbErr?.code);
+        console.warn("[auth] firebase session link skipped", fbErr?.code);
+      }
+      // 2.5) P0 对接修复：把 Firebase idToken 交给后端落 gb_session cookie，
+      //      否则 middleware 会把角色空间的跳转 307 弹回登录页
+      try {
+        const currentUser = fbAuth?.currentUser;
+        if (currentUser) {
+          const idToken = await currentUser.getIdToken();
+          await fetch("/api/auth/session", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ idToken }),
+          });
+        }
+      } catch (sessionErr) {
+        console.warn("[auth] session cookie bootstrap failed", sessionErr);
       }
       // 3) 持久化 Google 后端会话到本地（供 useAuthSession 读取，保证跳转后页面放行）
       if (data?.uid) {
