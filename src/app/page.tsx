@@ -63,7 +63,7 @@ export default function Home() {
                 <li>✅ Real tasks · Real pay · No experience needed · 真实任务、真实报酬、无需经验</li>
               </ul>
               <div className="mt-7 flex flex-wrap gap-4">
-                <Link href="/shop/tasks" className="rounded-xl bg-emerald-500 px-6 py-3 font-bold text-emerald-950 hover:bg-emerald-400">
+                <Link href="/auth" className="rounded-xl bg-emerald-500 px-6 py-3 font-bold text-emerald-950 hover:bg-emerald-400">
                   Join the Task Hall · 进入接单大厅
                 </Link>
               </div>
@@ -148,7 +148,7 @@ export default function Home() {
               <li>✅ Real-Time Audit (Approve / Rework / Reject) · 实时审核三键</li>
               <li>✅ Escrow Locked Funds · 托管资金冻结</li>
             </ul>
-            <Link href="/admin" className="mt-5 inline-block font-semibold text-indigo-300 hover:text-indigo-200">
+            <Link href="/auth" className="mt-5 inline-block font-semibold text-indigo-300 hover:text-indigo-200">
               Go to Merchant Console →
               <span className="ml-1 text-xs text-indigo-400">进入商家控制台</span>
             </Link>
@@ -170,7 +170,7 @@ export default function Home() {
               <li>✅ Multi-Platform: TikTok · YouTube · Instagram · Facebook · X</li>
               <li>✅ PayPal Withdrawal · PayPal 提现</li>
             </ul>
-            <Link href="/shop/tasks" className="mt-5 inline-block font-semibold text-indigo-300 hover:text-indigo-200">
+            <Link href="/auth" className="mt-5 inline-block font-semibold text-indigo-300 hover:text-indigo-200">
               Open Task Hall →
               <span className="ml-1 text-xs text-indigo-400">打开任务大厅</span>
             </Link>
