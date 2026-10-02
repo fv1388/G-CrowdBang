@@ -40,23 +40,7 @@ export default function Home() {
           用经过核验、真实落地的美国创作者，发起你的海外品牌增长任务。
         </p>
 
-        {/* 双端 CTA */}
-        <div className="mt-9 flex flex-wrap justify-center gap-4">
-          <Link
-            href="/shop/tasks"
-            className="rounded-xl bg-indigo-600 px-7 py-3.5 font-semibold text-white shadow-lg hover:bg-indigo-500"
-          >
-            Browse Tasks
-            <span className="ml-2 text-xs font-normal text-indigo-200">浏览任务大厅 · 老外接单</span>
-          </Link>
-          <Link
-            href="/admin"
-            className="rounded-xl border border-slate-600 px-7 py-3.5 font-semibold text-slate-200 hover:bg-slate-800"
-          >
-            For Merchants
-            <span className="ml-2 text-xs font-normal text-slate-400">商户入口 · 发布悬赏</span>
-          </Link>
-        </div>
+        {/* 双端 CTA（已按需求移除） */}
       </section>
 
       {/* ============ 招募图文说明（海报）· 首屏最上方 ============ */}
