@@ -26,8 +26,6 @@ import Script from "next/script";
 import { GoogleAuthProvider, signInWithCredential, signInWithCustomToken } from "firebase/auth";
 import {
   auth as fbAuth,
-  signUpWithEmail,
-  signInWithEmail,
   firebaseConfigReady,
   persistGoogleSession,
 } from "@/database/auth";
@@ -93,35 +91,38 @@ export default function AuthPage() {
     setLoading(true);
     setFieldError("");
     try {
-      let s;
-      if (mode === "register") {
-        // 角色以小写入库，与 firestore.rules 的 roleOf() 判断保持一致
-        s = await signUpWithEmail(email, password, role.toLowerCase());
-      } else {
-        s = await signInWithEmail(email, password);
+      // 邮箱注册/登录一律走服务端代理（Vercel 服务器在境外直连 Firebase Auth），
+      // 彻底绕开浏览器在受限网络下直连 Firebase Auth API 导致的
+      // auth/network-request-failed。成功即落 gb_session cookie，供 middleware 放行。
+      const endpoint = mode === "register" ? "/api/auth/signup" : "/api/auth/login";
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, role: role.toLowerCase() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        // 后端返回的 error 码与 Firebase 码语义一致，用 error 字段驱动前端分支
+        const e = new Error(data?.error || "Sign-in failed. Please try again. / 登录失败，请重试。");
+        e.code = data?.error || "";
+        e.serverReason = data?.reason || "";
+        throw e;
       }
-      console.log("[auth] ok", s);
 
-      // P0 对接修复：客户端 SDK 登录不经过后端，gb_session cookie 不会被写入，
-      // middleware 会把 /admin、/shop/tasks 的跳转 307 弹回本页。
-      // 因此跳转前先调登录网关（真实模式走 Identity Toolkit 换 idToken 落 cookie；
-      // mock 模式落 mock 占位 cookie），保证页面守卫放行。
+      // 本地会话兜底：浏览器无真实 Firebase 会话时，useAuthSession 会回读该本地会话，
+      // 保证跳转后受保护页面放行（与 Google 登录的持久化机制一致）。
       try {
-        await fetch("/api/auth/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password, role: String(s?.role || role).toLowerCase() }),
-        });
-      } catch (cookieErr) {
-        console.warn("[auth] session cookie bootstrap failed", cookieErr);
+        persistGoogleSession(data?.uid, data?.email, data?.role);
+      } catch {
+        /* ignore */
       }
 
-      window.location.href = routeByRole(s?.role);
+      window.location.href = routeByRole(data?.role || role);
     } catch (err) {
-      const code = err?.code || "";
+      const code = err?.code || err?.serverReason || "";
 
       // 【核心防爆 · 邮箱已占用】→ 自动切到登录模式并保留邮箱，不再卡死
-      if (code === "auth/email-already-in-use") {
+      if (code === "auth/email-already-in-use" || code === "EMAIL_EXISTS") {
         setMode("signin");
         setInfoNote(EMAIL_ALREADY_IN_USE_MSG);
         setServerError("");
@@ -130,6 +131,18 @@ export default function AuthPage() {
       }
 
       const map = {
+        // Firebase / Identity Toolkit 后端返回码（服务端代理）
+        "EMAIL_EXISTS": "This email is already registered. / 该邮箱已注册。",
+        "EMAIL_NOT_FOUND":
+          "No account with this email. Please sign up first. / 该邮箱未注册，请先注册。",
+        "INVALID_PASSWORD": "Incorrect password. / 密码错误，请重试。",
+        "INVALID_LOGIN_CREDENTIALS": "Incorrect email or password. / 邮箱或密码不正确。",
+        "INVALID_EMAIL": "Invalid email format. / 邮箱格式无效。",
+        "WEAK_PASSWORD": "Password too weak. / 密码强度不足。",
+        "TOO_MANY_ATTEMPTS_TRY_LATER":
+          "Too many attempts. Please try again later. / 尝试次数过多，请稍后再试。",
+        // 兼容客户端码
+        "auth/email-already-in-use": "This email is already registered. / 该邮箱已注册。",
         "auth/invalid-email": "Invalid email format. / 邮箱格式无效。",
         "auth/weak-password": "Password too weak. / 密码强度不足。",
         "auth/user-not-found":

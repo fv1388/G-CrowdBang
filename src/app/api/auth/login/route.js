@@ -7,7 +7,7 @@
 // 合规：标准密码登录，不涉及任何规避逻辑。
 
 import { NextResponse } from "next/server";
-import { issueMockToken, isAuthReady } from "../../../../database/auth-server";
+import { issueMockToken } from "../../../../database/auth-server";
 
 const IDENTITY_TOOLKIT = "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword";
 
@@ -23,10 +23,13 @@ export async function POST(request) {
       return NextResponse.json({ error: "INVALID_EMAIL" }, { status: 400 });
     }
 
-    // 真实 Admin Auth 就绪：用 Firebase Identity Toolkit 换 ID Token
-    if (isAuthReady() && process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
+    // 真实模式：配置了有效 API key 即由服务端直连 Firebase Identity Toolkit 换 ID Token。
+    // 注意：这里不再依赖 Admin 服务账号凭证，只要 NEXT_PUBLIC_FIREBASE_API_KEY 有效即可，
+    //       保证受限网络下的用户也能通过境外 Vercel 服务器完成认证。
+    const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+    if (apiKey && !String(apiKey).includes("your_")) {
       const res = await fetch(
-        `${IDENTITY_TOOLKIT}?key=${encodeURIComponent(process.env.NEXT_PUBLIC_FIREBASE_API_KEY)}`,
+        `${IDENTITY_TOOLKIT}?key=${encodeURIComponent(apiKey)}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
